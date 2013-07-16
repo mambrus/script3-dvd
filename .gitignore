@@ -1,0 +1,11 @@
+# Installation files used by S3. Now always re-created on installation. Special
+# handling of files on installation will be handled by other s3-special files
+# instead.
+files.s3
+
+# Vim swap-files
+*.swp
+
+# Added by some merge tools
+*.orig
+*.tmp
