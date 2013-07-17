@@ -8,6 +8,10 @@
 source .s3..fonts.sh
 source .s3..uifuncs.sh
 
+#Some defaults
+DEF_PROJ="DVD_TMP"
+DEF_ISO="dvd_1337.iso"
+
 function print_toiso_help() {
 	local CMD_STR="$(basename ${0})"
 
@@ -20,7 +24,13 @@ $(echo -e ${FONT_BOLD}NAME${FONT_NONE})
             "into a playable/burnable ISO-image")
 
 $(echo -e ${FONT_BOLD}SYNOPSIS${FONT_NONE})
-        $(echo -e ${FONT_BOLD}${CMD_STR}${FONT_NONE} [options] [name])
+        $(echo -e ${FONT_BOLD}${CMD_STR}${FONT_NONE} [options] [projekt])
+        $(echo -e "${FONT_BOLD}${CMD_STR}${FONT_NONE}"\
+            "[${FONT_BOLD}-d${FONT_NONE} rootdir]"\
+            "[${FONT_BOLD}-i${FONT_NONE} isofile]"\
+            "[${FONT_BOLD}-v${FONT_NONE}]"\
+            "[${FONT_BOLD}-k${FONT_NONE}]"\
+            "[projekt]")
 
 $(echo -e ${FONT_BOLD}DESCRIPTION${FONT_NONE})
         Command line tool to transfer DVD-movies into ISO-images with as few
@@ -34,12 +44,12 @@ $(echo -e ${FONT_BOLD}EXAMPLES${FONT_NONE})
 
             Uses directory from where process is invoked as root directory
             for the project. Output is a ISO-file named properly and
-            work-files are tidied away. make sure you have at least 15G
+            work-files are tidied away. Make sure you have at least 15G
             free space (process does not use temp-directory due to transfer
             penalty).
 
-        $(echo -e "${FONT_BOLD}${CMD_STR} -d${FONT_NONE} <root_dir>")
-            Uses this directory as root directory for the project. The
+        $(echo -e "${FONT_BOLD}${CMD_STR} -d${FONT_NONE} rootdir")
+            Uses rootdir as main rip-directory for the project. The
             project might or might not be a directory itself depending on
             settings, in which case this is the directory where the projects
             sub-directory will be. As the process handle very large
@@ -48,6 +58,12 @@ $(echo -e ${FONT_BOLD}EXAMPLES${FONT_NONE})
 
             Default is to use the current directory as root. Make sure you
             have write permissions.
+
+        $(echo -e "${FONT_BOLD}${CMD_STR} -k${FONT_NONE} project
+            Use project as project-name. This is the directory where the
+            ${FONT_UNDERLINE}VOB-files${FONT_NONE} are kept. Since option ${FONT_BOLD}-k${FONT_NONE} is given, you can use this
+            directory to get a feature from, either author or to transcode
+            from")
 
 $(echo -e ${FONT_BOLD}OVERVIEW${FONT_NONE})
         This program is meant to take the pain away from ripping DVD's and to
@@ -99,7 +115,18 @@ $(echo -e ${FONT_BOLD}OPTIONS${FONT_NONE})
         are a few just to make those flag-Nazis happy:
 
     $(echo -e ${FONT_BOLD}General options${FONT_NONE})
-        $(echo -e ${FONT_BOLD}-d${FONT_NONE} root_dir)
+        $(echo -e "${FONT_BOLD}-d${FONT_NONE} rootdir
+            Use this directory as the root-dir to work in. This would
+            typically be ${FONT_UNDERLINE}~/Videos${FONT_NONE} or similar.")
+
+        $(echo -e "${FONT_BOLD}-i${FONT_NONE} isofile
+            Final file-name will be packed info ${FONT_UNDERLINE}isofile${FONT_NONE}")
+
+        $(echo -e "${FONT_BOLD}-k${FONT_NONE}
+            ${FONT_UNDERLINE}Keep${FONT_NONE} the VOB-files which would normally be deleted")
+
+        $(echo -e "${FONT_BOLD}-v${FONT_NONE}
+            Be ${FONT_UNDERLINE}verbose${FONT_NONE}")
 
 $(echo -e ${FONT_BOLD}AUTHOR${FONT_NONE})
         Written by Michael Ambrus.
@@ -142,7 +169,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hHD:R: OPTION; do
+	while getopts hd:i:vk OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -153,7 +180,16 @@ EOF
 			exit 0
 			;;
 		d)
-			ROOT_DIR=$OPTARG
+			RIPDIR=$OPTARG
+			;;
+		i)
+			ISO=$OPTARG
+			;;
+		v)
+			VERBOSE="yes"
+			;;
+		k)
+			KEEP="yes"
 			;;
 		?)
 			echo "Syntax error:" 1>&2
@@ -166,13 +202,19 @@ EOF
 	shift $(($OPTIND - 1))
 
 	if [ $# -ge 0 ] && [ $# -le 1 ]; then
-		echo "This is OK"
+		echo "This is OK" > /dev/null
+		if [ $# -gt 0 ]; then
+			PROJECT=${PROJECT-${1}}
+		fi
 	else
 		echo "Syntax error: $TOISO_SH_INFO number of parameters" 1>&2
 		echo "For help, type: $TOISO_SH_INFO -h" 1>&2
 		exit 2
 	fi
 
-	ROOT_DIR=${ROOT_DIR-"./"}
-
+	RIPDIR=${RIPDIR-$(pwd)}
+	PROJECT=${PROJECT-${DEF_PROJ}}
+	ISO=${ISO-${DEF_ISO}}
+	VERBOSE=${VERBOSE-"no"}
+	KEEP=${KEEP-"no"}
 
