@@ -26,7 +26,6 @@ function toiso() {
 		time (dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}" >> \
 			$TMP_OUT_FILE 2>&1 )
 	fi
-	eject
 	if [ "X${PROJECT}" == "X${DEF_PROJ}" ]; then
 		#No project given on command-line. Detect a new one based on the
 		#auto-detected feature-name

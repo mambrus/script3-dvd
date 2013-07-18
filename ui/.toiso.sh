@@ -2,14 +2,15 @@
 # This is not a complete script. It can't exist alone and it's is purely
 # meant for being included into the main script. Reason for existence is to #
 # keep main logic separated from ui, which for script3 scripts tend to be much
-# more bloated than the main-code. In OOP ling this is called MVC pattern
+# more bloated than the main-code. In OOP lingo this is called MVC pattern
 # (http://en.wikipedia.org/wiki/Model-view-controller)
 
 source .s3..fonts.sh
 source .s3..uifuncs.sh
 
 #Some defaults
-DEF_PROJ="DVD_TMP"
+TS=$(date +"%s")
+DEF_PROJ="DVD_TMP_$TS"
 DEF_ISO="dvd_1337.iso"
 
 function print_toiso_help() {

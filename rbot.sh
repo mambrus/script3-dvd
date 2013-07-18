@@ -11,69 +11,64 @@ TMP_OUT_FILE="/tmp/rbot.txt"
 
 
 function rbot() {
-	echo "Creating ${RIPDIR}/${PROJECT}"
-	mkdir "${RIPDIR}/${PROJECT}"
-	echo "Reading DVD into [${RIPDIR}/${PROJECT}]"
-	rm -f $TMP_OUT_FILE
-	touch $TMP_OUT_FILE
-
-	# Make a full mirror. Any copy-protection will still leave us with
-	# enough VOBS to to create our own main-feature (which can me authored if
-	# needed)
-	if [ "X${VERBOSE}" == "Xyes" ]; then
-		time dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}"
-	else
-		time (dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}" >> \
-			$TMP_OUT_FILE 2>&1 )
+	if [ "X${VERBOSE}" == "Xno" ]; then
+		#Shut inotify up if it doesn't need to be chatty
+		INO_EXTRAS="${INO_EXTRAS}-qq"
 	fi
-	eject
-	if [ "X${PROJECT}" == "X${DEF_PROJ}" ]; then
-		#No project given on command-line. Detect a new one based on the
-		#auto-detected feature-name
-		NEW_PROJ=$(ls ${RIPDIR}/${PROJECT} | \
-			sed -e 's/[[:space:]]\+/_/g' | \
-			tr '[:lower:]' '[:upper:]' )
-		echo "New project-name detected..."
-		echo "Renaming [${RIPDIR}/${PROJECT}] to [${RIPDIR}/${NEW_PROJ}]"
-		mv "${RIPDIR}/${PROJECT}" "${RIPDIR}/${NEW_PROJ}"
-		PROJECT="${NEW_PROJ}"
-	fi
+	
+	#Try open the tray for user if closed
+	set +e
+	eject ${DRIVE} > /dev/null 2>&1
+	eject -T ${DRIVE} > /dev/null 2>&1
+	set -e
+	N=0
 
-	#Will spaces be handled correctly?
-	FEATURE_CREATED=$(ls ${RIPDIR}/${PROJECT})
+	echo "Please insert new disk in [${DRIVE}] and close the door"
+	echo "========================================================="
+	inotifywait "${INO_EXTRAS}" -e open ${DRIVE}
+	set +e
+	while inotifywait "${INO_EXTRAS}" -e close_nowrite ${DRIVE} -t 1200; do
+		set -e
 
-	if [ "X${ISO}" == "X${DEF_ISO}" ]; then
-		#No specific iso-file-name given. Autodetect one
+		inotifywait "${INO_EXTRAS}" -e close_nowrite ${DRIVE}
+		echo "About to scan disk [$N] from [${DRIVE}]"
+		inotifywait "${INO_EXTRAS}" -e open ${DRIVE}
 		
-		NEW_ISO="$(ls ${RIPDIR}/${PROJECT} | \
-			sed -e 's/[[:space:]]\+/_/g').iso"
-		ISO="${NEW_ISO}"
-		echo "New ISO file-name detected [${ISO}]"
-	fi
+		set +e
+		echo "Waiting for mount 1(2) [${DRIVE}]"
+		inotifywait "${INO_EXTRAS}" -e open -t 30 ${DRIVE} || \
+			echo "Timed-out, continuing..."
+		echo "Waiting for mount 2(2) [${DRIVE}]"
+		inotifywait "${INO_EXTRAS}" -e open -t 30 ${DRIVE} || \
+			echo "Timed-out, continuing..."
+		set -e
 
-	if ! [ -d "${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS" ]; then
-		echo "Missing [${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS]"
-		echo " ...creating phony directory."
-		mkdir "${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS"
-	fi
+		PLAY=$(\
+			which play && \
+			play ${HOME}/bin/.dvd..rbot_newrun.wav >/dev/null 2>&1 \
+		)
+		dvd.toiso.sh || \
+			PLAY=$(\
+				which play && \
+				play ${HOME}/bin/.dvd..bad.wav >/dev/null 2>&1 \
+			)
 
-	(
-		cd "${RIPDIR}/${PROJECT}"
+		(( N = N + 1 ))
+		echo "You have scanned [$N] disks from [${DRIVE}]"
+		eject
+		echo "Opened [${DRIVE}] for you..."
+		
+		set +e
+		inotifywait "${INO_EXTRAS}" -e attrib ${DRIVE}
+		set -e
 
-		echo "Creating iso-file [${ISO}] from"\
-			"[${RIPDIR}/${PROJECT}/${FEATURE_CREATED}]"
-		if [ "X${VERBOSE}" == "Xyes" ]; then
-			time genisoimage -dvd-video -iso-level 2 -o "${ISO}" \
-				"${RIPDIR}/${PROJECT}/${FEATURE_CREATED}"
-		else
-			time (genisoimage -dvd-video -iso-level 2 -o "${ISO}" \
-				"${RIPDIR}/${PROJECT}/${FEATURE_CREATED}" >> $TMP_OUT_FILE 2>&1)
-		fi
-	)
-	if [ "X${KEEP}" == "Xno" ]; then
-		mv "${RIPDIR}/${PROJECT}/${ISO}" "${RIPDIR}"
-		rm -rf "${RIPDIR}/${PROJECT}"
-	fi
+		echo "Please insert disk in [${DRIVE}] and close the door"
+		echo "========================================================="
+	done
+	set -e
+
+	echo "Buh-by now and thank you for the fish!"
+	echo "========================================================="
 }
 
 source s3.ebasename.sh
@@ -88,7 +83,10 @@ if [ "$RBOT_SH" == $( ebasename $0 ) ]; then
 	echo "${RBOT_SH_INFO} started: $(date +"%D %T")"
 	time rbot "$@"
 	echo "${RBOT_SH_INFO} stopped: $(date +"%D %T")"
-	which play && play ~/bin/.dvd..alert.wav >/dev/null 2>&1
+	PLAY=$(\
+		which play && \
+		play ${HOME}/bin/.dvd..alert.wav >/dev/null 2>&1 \
+	)
 	RC=$?
 
 	exit $RC

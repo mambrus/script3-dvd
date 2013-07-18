@@ -2,15 +2,14 @@
 # This is not a complete script. It can't exist alone and it's is purely
 # meant for being included into the main script. Reason for existence is to #
 # keep main logic separated from ui, which for script3 scripts tend to be much
-# more bloated than the main-code. In OOP ling this is called MVC pattern
+# more bloated than the main-code. In OOP lingo this is called MVC pattern
 # (http://en.wikipedia.org/wiki/Model-view-controller)
 
 source .s3..fonts.sh
 source .s3..uifuncs.sh
 
 #Some defaults
-DEF_PROJ="DVD_TMP"
-DEF_ISO="dvd_1337.iso"
+DEF_DRIVE="/dev/dvd"
 
 function print_rbot_help() {
 	local CMD_STR="$(basename ${0})"
@@ -24,7 +23,7 @@ $(echo -e ${FONT_BOLD}NAME${FONT_NONE})
             "into a playable/burnable ISO-image")
 
 $(echo -e ${FONT_BOLD}SYNOPSIS${FONT_NONE})
-        $(echo -e ${FONT_BOLD}${CMD_STR}${FONT_NONE} [options] [projekt])
+        $(echo -e ${FONT_BOLD}${CMD_STR}${FONT_NONE} [options])
         $(echo -e "${FONT_BOLD}${CMD_STR}${FONT_NONE}"\
             "[${FONT_BOLD}-d${FONT_NONE} rootdir]"\
             "[${FONT_BOLD}-i${FONT_NONE} isofile]"\
@@ -169,7 +168,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:vk OPTION; do
+	while getopts hD:v OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -179,17 +178,11 @@ EOF
 		fi
 			exit 0
 			;;
-		d)
-			RIPDIR=$OPTARG
-			;;
-		i)
-			ISO=$OPTARG
+		D)
+			DRIVE=$OPTARG
 			;;
 		v)
 			VERBOSE="yes"
-			;;
-		k)
-			KEEP="yes"
 			;;
 		?)
 			echo "Syntax error:" 1>&2
@@ -201,20 +194,13 @@ EOF
 	done
 	shift $(($OPTIND - 1))
 
-	if [ $# -ge 0 ] && [ $# -le 1 ]; then
-		echo "This is OK" > /dev/null
-		if [ $# -gt 0 ]; then
-			PROJECT=${PROJECT-${1}}
-		fi
-	else
+	if [ $# -gt 0 ]; then
 		echo "Syntax error: $RBOT_SH_INFO number of parameters" 1>&2
 		echo "For help, type: $RBOT_SH_INFO -h" 1>&2
 		exit 2
 	fi
 
-	RIPDIR=${RIPDIR-$(pwd)}
-	PROJECT=${PROJECT-${DEF_PROJ}}
-	ISO=${ISO-${DEF_ISO}}
+	DRIVE=${DRIVE-${DEF_DRIVE}}
 	VERBOSE=${VERBOSE-"no"}
-	KEEP=${KEEP-"no"}
+	INO_EXTRAS=${INO_EXTRAS-""}
 
