@@ -18,13 +18,15 @@ function toiso() {
 	touch $TMP_OUT_FILE
 
 	# Make a full mirror. Any copy-protection will still leave us with
-	# enough VOBS to to create our own main-feaute (which can me authored if
+	# enough VOBS to to create our own main-feature (which can me authored if
 	# needed)
 	if [ "X${VERBOSE}" == "Xyes" ]; then
 		time dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}"
 	else
-		time (dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}" >> $TMP_OUT_FILE 2>&1 )
+		time (dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}" >> \
+			$TMP_OUT_FILE 2>&1 )
 	fi
+	eject
 	if [ "X${PROJECT}" == "X${DEF_PROJ}" ]; then
 		#No project given on command-line. Detect a new one based on the
 		#auto-detected feature-name
@@ -42,19 +44,29 @@ function toiso() {
 
 	if [ "X${ISO}" == "X${DEF_ISO}" ]; then
 		#No specific iso-file-name given. Autodetect one
+		
 		NEW_ISO="$(ls ${RIPDIR}/${PROJECT} | \
 			sed -e 's/[[:space:]]\+/_/g').iso"
 		ISO="${NEW_ISO}"
 		echo "New ISO file-name detected [${ISO}]"
 	fi
 
+	if ! [ -d "${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS" ]; then
+		echo "Missing [${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS]"
+		echo " ...creating phony directory."
+		mkdir "${RIPDIR}/${PROJECT}/${FEATURE_CREATED}/AUDIO_TS"
+	fi
+
 	(
 		cd "${RIPDIR}/${PROJECT}"
-		echo "Creating iso-file [${ISO}] from [${RIPDIR}/${PROJECT}/${FEATURE_CREATED}]"
+
+		echo "Creating iso-file [${ISO}] from"\
+			"[${RIPDIR}/${PROJECT}/${FEATURE_CREATED}]"
 		if [ "X${VERBOSE}" == "Xyes" ]; then
-			time genisoimage -o "${ISO}" "${RIPDIR}/${PROJECT}/${FEATURE_CREATED}"
+			time genisoimage -dvd-video -iso-level 2 -o "${ISO}" \
+				"${RIPDIR}/${PROJECT}/${FEATURE_CREATED}"
 		else
-			time (genisoimage -o "${ISO}" \
+			time (genisoimage -dvd-video -iso-level 2 -o "${ISO}" \
 				"${RIPDIR}/${PROJECT}/${FEATURE_CREATED}" >> $TMP_OUT_FILE 2>&1)
 		fi
 	)
@@ -73,8 +85,10 @@ if [ "$TOISO_SH" == $( ebasename $0 ) ]; then
 
 	set -u
 	set -e
-
+	echo "${TOISO_SH_INFO} started: $(date +"%D %T")"
 	time toiso "$@"
+	echo "${TOISO_SH_INFO} stopped: $(date +"%D %T")"
+	which play && play ~/bin/.dvd..alert.wav >/dev/null 2>&1
 	RC=$?
 
 	exit $RC
