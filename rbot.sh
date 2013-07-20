@@ -47,11 +47,18 @@ function rbot() {
 			which play && \
 			play ${HOME}/bin/.dvd..rbot_newrun.wav >/dev/null 2>&1 \
 		)
+		set e+
 		dvd.toiso.sh || \
 			PLAY=$(\
 				which play && \
 				play ${HOME}/bin/.dvd..bad.wav >/dev/null 2>&1 \
 			)
+		if [  $? -ne 0 ]; then
+			echo "Backup failed, bailing out - i.e. preserving what is"\
+				"there" 2>&1
+			exit -1
+		fi
+		set e-
 
 		(( N = N + 1 ))
 		echo "You have scanned [$N] disks from [${DRIVE}]"
@@ -80,6 +87,8 @@ if [ "$RBOT_SH" == $( ebasename $0 ) ]; then
 
 	set -u
 	set -e
+	set -o pipefail
+
 	echo "${RBOT_SH_INFO} started: $(date +"%D %T")"
 	time rbot "$@"
 	echo "${RBOT_SH_INFO} stopped: $(date +"%D %T")"

@@ -1,4 +1,4 @@
-# UI part of dvd.toiso.sh
+# UI part of dvd.tc.sh
 # This is not a complete script. It can't exist alone and it's is purely
 # meant for being included into the main script. Reason for existence is to #
 # keep main logic separated from ui, which for script3 scripts tend to be much
@@ -12,17 +12,21 @@ source .s3..uifuncs.sh
 TS=$(date +"%s")
 DEF_PROJ="DVD_TMP_$TS"
 DEF_ISO="dvd_1337.iso"
+MF_MIN="dvd_1337.iso"
+DEF_MF_MINSZ=1050000000
+DEF_MF_MAXSZ=1150000000
+DEF_MF_MIN=3
+DEF_MF_MAX=6
+DEF_COL1_WIDTH=20 #Any sane value. This is just for looks
 
-function print_toiso_help() {
+function print_tc_help() {
 	local CMD_STR="$(basename ${0})"
 
 cat <<EOF
 $(print_man_header)
 
 $(echo -e ${FONT_BOLD}NAME${FONT_NONE})
-        $CMD_STR - $(echo -e \
-            "converts a ${BG_RED}${FG_WHITE}${FONT_BLINK}movie-DVD${FONT_NONE}"\
-            "into a playable/burnable ISO-image")
+        $CMD_STR - Transcoding made simple.
 
 $(echo -e ${FONT_BOLD}SYNOPSIS${FONT_NONE})
         $(echo -e ${FONT_BOLD}${CMD_STR}${FONT_NONE} [options] [project])
@@ -34,8 +38,11 @@ $(echo -e ${FONT_BOLD}SYNOPSIS${FONT_NONE})
             "[project]")
 
 $(echo -e ${FONT_BOLD}DESCRIPTION${FONT_NONE})
-        Command line tool to transfer DVD-movies into ISO-images with as few
-        options and as litte user interaction a possible.
+        $(echo -e "TC stands for ${FONT_BOLD}T${FONT_NONE}rans-${FONT_BOLD}C${FONT_NONE}ode")
+        TC is is transcoding made simple. It will take either a iso-file or
+        a directory with vob-files as input and and transcode it into mp4.
+        Output will include main feature only (i.e. the movie), best audio
+        stream and (predefined) subscripts (if possible).
 
 $(echo -e ${FONT_BOLD}EXAMPLES${FONT_NONE})
         $(echo -e "${FONT_BOLD}${CMD_STR}${FONT_NONE}")
@@ -56,6 +63,12 @@ $(echo -e ${FONT_BOLD}EXAMPLES${FONT_NONE})
             sub-directory will be. As the process handle very large
             data-files, usage of a temp directory is not an option. This
             directory is for all practical aspects that however.
+
+            Default is to use the current directory as root. Make sure you
+            have write permissions.
+
+        $(echo -e "${FONT_BOLD}${CMD_STR} -t${FONT_NONE} transdir")
+            Uses transdir as main destination-directory for transformations.
 
             Default is to use the current directory as root. Make sure you
             have write permissions.
@@ -123,6 +136,14 @@ $(echo -e ${FONT_BOLD}OPTIONS${FONT_NONE})
         $(echo -e "${FONT_BOLD}-i${FONT_NONE} isofile
             Final file-name will be packed info ${FONT_UNDERLINE}isofile${FONT_NONE}")
 
+        $(echo -e "${FONT_BOLD}-S${FONT_NONE}
+            Be ${FONT_UNDERLINE}silent${FONT_NONE}, i.e. Don't use acoustic"\
+            "notifiers")
+
+        $(echo -e "${FONT_BOLD}-t${FONT_NONE} transdir
+            Use ${FONT_UNDERLINE}transdir${FONT_NONE} as destination directory"\
+            "")
+
         $(echo -e "${FONT_BOLD}-k${FONT_NONE}
             ${FONT_UNDERLINE}Keep${FONT_NONE} the VOB-files which would normally be deleted")
 
@@ -170,21 +191,27 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:vk OPTION; do
+	while getopts hd:i:t:vkS OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
-			print_toiso_help $0 | less -R
+			print_tc_help $0 | less -R
 		else
-			print_toiso_help $0
+			print_tc_help $0
 		fi
 			exit 0
 			;;
 		d)
 			RIPDIR=$OPTARG
 			;;
+		t)
+			TRANSDIR=$OPTARG
+			;;
 		i)
 			ISO=$OPTARG
+			;;
+		S)
+			SILENT="yes"
 			;;
 		v)
 			VERBOSE="yes"
@@ -194,7 +221,7 @@ EOF
 			;;
 		?)
 			echo "Syntax error:" 1>&2
-			print_toiso_help $0 1>&2
+		    echo "For help, type: $TC_SH_INFO -h" 1>&2
 			exit 2
 			;;
 
@@ -208,14 +235,24 @@ EOF
 			PROJECT=${PROJECT-${1}}
 		fi
 	else
-		echo "Syntax error: $TOISO_SH_INFO number of parameters" 1>&2
-		echo "For help, type: $TOISO_SH_INFO -h" 1>&2
+		echo "Syntax error: $TC_SH_INFO number of parameters" 1>&2
+		echo "For help, type: $TC_SH_INFO -h" 1>&2
 		exit 2
 	fi
 
 	RIPDIR=${RIPDIR-$(pwd)}
+	RIPDIR=${RIPDIR%"/"}
+	TRANSDIR=${TRANSDIR-$(pwd)}
+	TRANSDIR=${TRANSDIR%"/"}
 	PROJECT=${PROJECT-${DEF_PROJ}}
 	ISO=${ISO-${DEF_ISO}}
 	VERBOSE=${VERBOSE-"no"}
 	KEEP=${KEEP-"no"}
+	SILENT=${SILENT-"no"}
+
+	MF_MINSZ=${MF_MINSZ-${DEF_MF_MINSZ}}
+	MF_MAXSZ=${MF_MAXSZ-${DEF_MF_MAXSZ}}
+	MF_MIN=${MF_MIN-${DEF_MF_MIN}}
+	MF_MAX=${MF_MAX-${DEF_MF_MAX}}
+	COL1_WIDTH=${COL1_WIDTH-${DEF_COL1_WIDTH}}
 
