@@ -7,6 +7,7 @@
 
 source .s3..fonts.sh
 source .s3..uifuncs.sh
+source .dvd..funcs.sh
 
 #Some defaults
 TS=$(date +"%s")
@@ -18,6 +19,17 @@ DEF_MF_MAXSZ=1150000000
 DEF_MF_MIN=3
 DEF_MF_MAX=6
 DEF_COL1_WIDTH=20 #Any sane value. This is just for looks
+DEF_SLANG="swe"
+DEF_THREADS=$(get_nr_cpu)
+DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -acodec aac"
+DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -aq 100"
+#DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -ac 2"
+#DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -slang swe"
+DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -vcodec libx264"
+DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -vpre slow"
+DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -crf 24"
+
+DEF_FF_EXTRA="${DEF_FF_EXTRA} -ac 2"
 
 function print_tc_help() {
 	local CMD_STR="$(basename ${0})"
@@ -255,4 +267,12 @@ EOF
 	MF_MIN=${MF_MIN-${DEF_MF_MIN}}
 	MF_MAX=${MF_MAX-${DEF_MF_MAX}}
 	COL1_WIDTH=${COL1_WIDTH-${DEF_COL1_WIDTH}}
+
+	SLANG=${SLAN-${DEF_SLANG}}
+	SLANG="-slang ${SLANG}"
+	THREADS=${THREADS-${DEF_THREADS}}
+	THREADS="-threads ${THREADS}"
+
+	FF_EXTRA=${FF_EXTRA-${DEF_FF_EXTRA}}
+	#FF_EXTRA="${FF_EXTRA-${FF_EXTRAALLT}"
 

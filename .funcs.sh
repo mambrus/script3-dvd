@@ -19,6 +19,10 @@ function play_tune() {
 	fi
 }
 
+function get_nr_cpu() {
+	 cat /proc/cpuinfo | grep processor | wc -l
+}
+
 function PUSHD() {
 	#VERBOSE=""
 	if [ "X${VERBOSE}" == "X" ]; then

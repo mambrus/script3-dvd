@@ -38,7 +38,7 @@ function get_vobs() {
 	for D in $L; do
 		VOBS_AR[$I]=$(echo $D | tr '¤' ' ')
 		PROJ_AR[$I]=$(basename "$(echo $D | tr '¤' ' ' | sed -e 's/VIDEO_TS//')")
-		(( ++I )) #Dont post-increment or set -e will get upset
+		(( ++I )) #Dont post-increment or it will upset 'set -e'
 	done
 }
 
@@ -150,6 +150,20 @@ function tc_from_vobdir() {
 				-T -o "${FINALDIR}"
 		) 2>&1 ) | \
 			grep -Ev 'Any uninterpretable gibberish you want to hide (eregex)'
+		POPD
+
+
+		PUSHD "${FINALDIR}"
+		FINAL_FN="$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4
+		MUVIDIR=${MUVIDIR-${TRANSDIR}}
+
+		echo "=========================================="
+		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
+			"[{${MUVIDIR}/${FINAL_FN}}]"
+		echo "=========================================="
+		time ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
+			$THREADS $SLANG $FF_EXTRA ${MUVIDIR}/${FINAL_FN}
+
 		POPD
 	done
 	POPD
