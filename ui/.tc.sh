@@ -36,6 +36,20 @@ DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -crf 24"
 DEF_FF_EXTRA="${DEF_FF_EXTRA} -ac 2"
 DEF_FF_SLANG="swe"
 
+#dvdauthor default VIDEO options
+#DEF_DVDA_VOPS="720xfull+16:9"
+#DEF_DVDA_VOPS="ntsc+16:9+720xfull"
+#DEF_DVDA_VOPS="ntsc+16:9+720x480"
+#DEF_DVDA_VOPS="${DEF_DVDA_VOPS},"		# Options for next track
+
+#dvdauthor default AUDIO options
+DEF_DVDA_AOPS="ac3+en"
+#DEF_DVDA_AOPS="${DEF_DVDA_AOPS},"		# Options for next track
+
+#dvdauthor default SUBPICTURE options
+DEF_DVDA_SOPS="sv"
+#DEF_DVDA_SOPS="${DEF_DVDA_SOPS},"		# Options for next track
+
 function print_tc_help() {
 	local CMD_STR="$(basename ${0})"
 
@@ -208,7 +222,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:Tt:vkS OPTION; do
+	while getopts hd:i:Tt:vkSm OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -226,6 +240,9 @@ EOF
 			;;
 		T)
 			SKIP_AUTHORING="yes"
+			;;
+		m)
+			MOUNT_ISO="yes"
 			;;
 		i)
 			ISO=$OPTARG
@@ -253,6 +270,8 @@ EOF
 		echo "This is OK" > /dev/null
 		if [ $# -gt 0 ]; then
 			PROJECT=${PROJECT-${1}}
+			PROJECT=${PROJECT%.iso}
+			FILENAME=$1
 		fi
 	else
 		echo "Syntax error: $TC_SH_INFO number of parameters" 1>&2
@@ -269,14 +288,14 @@ EOF
 	VERBOSE=${VERBOSE-"no"}
 	KEEP=${KEEP-"no"}
 	SILENT=${SILENT-"no"}
+	FILENAME=${FILENAME-"no"}
+	MOUNT_ISO=${MOUNT_ISO-"no"}
 
 	MF_MINSZ=${MF_MINSZ-${DEF_MF_MINSZ}}
 	MF_MAXSZ=${MF_MAXSZ-${DEF_MF_MAXSZ}}
 	MF_MIN=${MF_MIN-${DEF_MF_MIN}}
 	MF_MAX=${MF_MAX-${DEF_MF_MAX}}
 	COL1_WIDTH=${COL1_WIDTH-${DEF_COL1_WIDTH}}
-	AUTOR_DIFFSZ_OK=${AUTOR_DIFFSZ_OK-${DEF_AUTOR_DIFFSZ_OK}}
-	SKIP_AUTHORING=${SKIP_AUTHORING-"no"}
 
 	SLANG=${SLANG-${DEF_FF_SLANG}}
 	SLANG="-slang ${SLANG}"
@@ -285,4 +304,22 @@ EOF
 
 	FF_EXTRA=${FF_EXTRA-${DEF_FF_EXTRA}}
 	#FF_EXTRA="${FF_EXTRA-"${FF_EXTRAALLT} ${DEF_FF_EXTRA}"}"
+	
+	#dvdauthor options handling
+	SKIP_AUTHORING=${SKIP_AUTHORING-"no"}
+	AUTOR_DIFFSZ_OK=${AUTOR_DIFFSZ_OK-${DEF_AUTOR_DIFFSZ_OK}}
+	#VIDEO options
+	DVDA_VOPS=${DVDA_VOPS="${DEF_DVDA_VOPS}"}
+	DVDA_VOPS=${DVDA_VOPS "--video=${DVDA_VOPS}"}
+
+	#AUDIO options
+	DVDA_AOPS=${DVDA_AOPS="${DEF_DVDA_AOPS}"}
+	DVDA_AOPS="--audio=${DVDA_AOPS}"
+
+	#SUBPICTURE options
+	DVDA_SOPS=${DVDA_SOPS="${DEF_DVDA_SOPS}"}
+	DVDA_SOPS="--subpictures=${DVDA_SOPS}"
+	
+	#All categories combined
+	DVDA_OPS="${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS}"
 

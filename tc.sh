@@ -15,6 +15,7 @@ source .dvd..funcs.sh
 
 PROJ_AR=()
 VOBS_AR=()
+FINAL_FN=""
 
 TC_SH="tc.sh"
 
@@ -80,15 +81,87 @@ function main_feature() {
 	fi
 }
 
-
-function tc_from_iso() {
-	#dvdbackup -i IN_file.iso -p -F -o ./OUT_Dir
-	echo "TBD"
+#Error handler
+function err_tc_from_iso_dvdcopy() {
+	play_tune bad
+	rm -rf $1
+	echo "${TC_SH_INFO} stopped with error: $(date +"%D %T")"
 }
 
+# This method uses dvdcopy to get the main feature into a copy.
+# It's probably safer, but can take around 6min extra per iso (depending on
+# disk/bus-speeds) and uses about one full dvd in size exrta on disk for
+# tempfiles. Experience show reading from mounts, if mount iso reside on
+# usb-drive is actually slightly *slower* than reading in a copy extra.
+# Therefore this variant is made default, but whichever is best probably
+# depends on system used (note that threading does not affect as this
+# currently only has an impact on ffmpeg (who works with authored copies
+# anyway).
+function tc_from_iso_dvdcopy() {
+	TDIR=$(tmpname dvdcopydir)
+	FINAL_FN=$(basename "${FILENAME}")
+	FINAL_FN=$(echo ${FINAL_FN} | \
+		sed -E 's/\.(ISO|iso)$//' | \
+		sed -e 's/ /_/g')
+	FINAL_FN="${FINAL_FN}.mp4"
+
+	add_on_err err_tc_from_iso_mounted "$TDIR"
+	
+	echo -e "Copying main feature from \\n[$1] into \\n[$TDIR]"
+	time dvdbackup -i "${1}" -p -F -o "${TDIR}"
+
+	echo -e "Transcoding \\n[$1]..."
+	time tc_from_vobdir "${TDIR}"
+	rm -rf $TDIR
+}
+
+#Error handler
+function err_tc_from_iso_mounted() {
+	play_tune bad
+	sudo umount "$1"
+	rm -rf "$1"
+	echo "${TC_SH_INFO} stopped with error: $(date +"%D %T")"
+}
+
+# Mount and read directly from loopback device. This requires the iso to be
+# free from any copy-protection.
+function tc_from_iso_mounted() {
+	MOUNT=$(tmpname iso_mountpoint)
+	FINAL_FN=$(basename "${FILENAME}")
+	FINAL_FN=$(echo ${FINAL_FN} | \
+		sed -E 's/\.(ISO|iso)$//' | \
+		sed -e 's/ /_/g')
+	FINAL_FN="${FINAL_FN}.mp4"
+	
+	add_on_err err_tc_from_iso_mounted "$MOUNT"
+
+	echo "Creating mount-point [$MOUNT] ..."
+	mkdir $MOUNT
+	echo "Mounting mount-point [$MOUNT] ..."
+	sudo mount -o loop $1 $MOUNT
+
+	echo -e "Transcoding main feature \\n[$1] from \\n[$MOUNT]"
+	time tc_from_vobdir "${MOUNT}"
+	sudo umount $MOUNT
+	rm -rf $MOUNT
+}
+
+function tc_from_iso() {
+	if [ $MOUNT_ISO == "yes" ]; then
+		tc_from_iso_mounted "$1"
+	else
+		tc_from_iso_dvdcopy() "$1"
+	fi
+}
 
 function tc_from_vobdir() {
-	get_vobs "${RIPDIR}"
+	if [ $# -eq 1 ]; then
+		VOBDIR="${1}"
+	else
+		VOBDIR="${RIPDIR}"
+	fi
+
+	get_vobs "${VOBDIR}"
 
 	if [ ${#PROJ_AR[@]} -ne ${#VOBS_AR[@]} ]; then
 		#Sanity check
@@ -122,15 +195,15 @@ function tc_from_vobdir() {
 		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}"
 		mkdir -p "${INTERDIR}"
 		mkdir -p "${FINALDIR}"
-		
+
 		echo "Moving to workdir [${INTERDIR}]..."
 		PUSHD "${INTERDIR}"
 
 		#Ability to move instead. If on same device, then much faster. TBD
 		MF=$(main_feature "${VOBS_AR[$I]}")
 		echo -e "Linking main feature [${MF}] from\\n"\
-			"[${RIPDIR}] to\\n [${INTERDIR}]"
-		time find "${RIPDIR}" -regextype posix-awk -regex '.*'${MF}'.*' \
+			"[${VOBDIR}] to\\n [${INTERDIR}]"
+		time find "${VOBDIR}" -regextype posix-awk -regex '.*'${MF}'.*' \
 			-exec ln -s '{}' . ';'
 
 		echo "Removing any menu VOB (tossing it away, worthless)..."
@@ -138,24 +211,23 @@ function tc_from_vobdir() {
 
 		if [ "X${SKIP_AUTHORING}" == "Xno" ];then
 			echo "=========================================="
-			echo -e "Authoring starts from\\n [${INTERDIR}] to\\n [${FINALDIR}]"
+			echo -e "${FONT_BOLD}Authoring${FONT_NONE} starts"\
+				"from\\n [${INTERDIR}] to\\n [${FINALDIR}]"
+			echo -e "Setting options to be used:\\n"\
+				"${FONT_BOLD}${DVDA_OPS}${FONT_NONE}"
 			echo "=========================================="
 			( time (
 				VIDEO_FORMAT=pal dvdauthor \
-					-t -o "${FINALDIR}" *.VOB
-			) 2>&1 ) | grep -Ev '^WARN' || true
+					-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} -o "${FINALDIR}" *.VOB
+			) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
 			# Even if allowing errors above, next step will fail because
 			# An *.IFO file isn't created
+
 			echo "=========================================="
 			echo -e "Creating a TOC in [${FINALDIR}]"
 			echo "=========================================="
-			( time (
-				VIDEO_FORMAT=pal dvdauthor \
-					-T -o "${FINALDIR}"
-			) 2>&1 ) | \
-				grep -Ev 'Any uninterpretable gibberish you want to hide (eregex)'
-			
-			
+			time VIDEO_FORMAT=pal dvdauthor \
+					-T -o "${FINALDIR}" || signal_err
 		else
 			echo "=========================================="
 			echo -e "Authoring skipped, linking instead."
@@ -184,13 +256,14 @@ function tc_from_vobdir() {
 		    echo "   abs($SZ1 - $SZ2) = $ABS_DIFF > $AUTOR_DIFFSZ_OK" 1>&2
 			echo "Check logs. Directories used so far are kept as is" 1>&2
 			echo "Check logs. Directories used so far are kept as is" 1>&2
+			signal_err
 			exit 1
 		fi
 
-		FINAL_FN="$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4
+		FINAL_FN=${FINAL_FN-"$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4}
 		#Consider optionlize MUVIDIR
 		MUVIDIR=${MUVIDIR-${TRANSDIR}}
-	
+
 		PUSHD "${FINALDIR}"
 
 		echo "=========================================="
@@ -205,7 +278,7 @@ function tc_from_vobdir() {
 		# If we read this far (i.e. no errors caught) then it should be OK
 		# to concider removing intermediate directories and also to move the
 		# source dir into "done" directory
-		
+
 		if [ "X${KEEP}" == "Xno" ]; then
 			rm -rf "${INTERDIR}"
 			rm -rf "${FINALDIR}"
@@ -220,6 +293,7 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 
 	TC_SH_INFO="dvd.${TC_SH}"
 	source .dvd.ui..tc.sh
+	source futil.tmpname.sh
 
 	set -u
 	set -e
@@ -228,8 +302,20 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 
 	echo "${TC_SH_INFO} started: $(date +"%D %T")"
 	echo
-	#time tc "$@"
-	time tc_from_vobdir "$@"
+	EXT=$(
+		echo "${FILENAME}" | \
+		sed -E 's/.*\.//' | \
+		tr '[[:lower:]]' '[[:upper:]]'
+	)
+
+	if [ "X${EXT}" == "XISO" ]; then
+		# Iso image. Mount it, copy it, and transcode it
+		time tc_from_iso "$@"
+	else
+		# Argument indicate directory. Assume vobs
+		time tc_from_vobdir "$@"
+	fi
+
 	echo "${TC_SH_INFO} stopped: $(date +"%D %T")"
 	play_tune alert
 	RC=$?
