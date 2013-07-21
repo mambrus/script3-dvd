@@ -82,6 +82,7 @@ function main_feature() {
 
 
 function tc_from_iso() {
+	#dvdbackup -i IN_file.iso -p -F -o ./OUT_Dir
 	echo "TBD"
 }
 
@@ -121,41 +122,76 @@ function tc_from_vobdir() {
 		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}"
 		mkdir -p "${INTERDIR}"
 		mkdir -p "${FINALDIR}"
-
-
+		
 		echo "Moving to workdir [${INTERDIR}]..."
 		PUSHD "${INTERDIR}"
 
 		#Ability to move instead. If on same device, then much faster. TBD
 		MF=$(main_feature "${VOBS_AR[$I]}")
-		echo -e "Copying main feature [${MF}] from\\n"\
+		echo -e "Linking main feature [${MF}] from\\n"\
 			"[${RIPDIR}] to\\n [${INTERDIR}]"
 		time find "${RIPDIR}" -regextype posix-awk -regex '.*'${MF}'.*' \
-			-exec cp -dpv '{}' . ';'
+			-exec ln -s '{}' . ';'
 
 		echo "Removing any menu VOB (tossing it away, worthless)..."
 		rm -f *0.VOB
-		echo "=========================================="
-		echo -e "Authoring starts from\\n [${INTERDIR}] to\\n [${FINALDIR}]"
-		echo "=========================================="
-		( time (
-			VIDEO_FORMAT=pal dvdauthor \
-				-t -o "${FINALDIR}" *.VOB
-		) 2>&1 ) | grep -Ev '^WARN'
-		echo "=========================================="
-		echo -e "Creating a TOC in[${FINALDIR}]"
-		echo "=========================================="
-		( time (
-			VIDEO_FORMAT=pal dvdauthor \
-				-T -o "${FINALDIR}"
-		) 2>&1 ) | \
-			grep -Ev 'Any uninterpretable gibberish you want to hide (eregex)'
+
+		if [ "X${SKIP_AUTHORING}" == "Xno" ];then
+			echo "=========================================="
+			echo -e "Authoring starts from\\n [${INTERDIR}] to\\n [${FINALDIR}]"
+			echo "=========================================="
+			( time (
+				VIDEO_FORMAT=pal dvdauthor \
+					-t -o "${FINALDIR}" *.VOB
+			) 2>&1 ) | grep -Ev '^WARN' || true
+			# Even if allowing errors above, next step will fail because
+			# An *.IFO file isn't created
+			echo "=========================================="
+			echo -e "Creating a TOC in [${FINALDIR}]"
+			echo "=========================================="
+			( time (
+				VIDEO_FORMAT=pal dvdauthor \
+					-T -o "${FINALDIR}"
+			) 2>&1 ) | \
+				grep -Ev 'Any uninterpretable gibberish you want to hide (eregex)'
+			
+			
+		else
+			echo "=========================================="
+			echo -e "Authoring skipped, linking instead."
+			echo -e "From\\n [${INTERDIR}] to\\n [${FINALDIR}]"
+			echo "=========================================="
+			mkdir ${FINALDIR}/VIDEO_TS
+			find ${INTERDIR}  -type l -exec ln -s '{}' ${FINALDIR}/VIDEO_TS ';'
+			#ln -Ts ${INTERDIR} ${FINALDIR}
+		fi
 		POPD
 
+		SZ1=$(du --max-dept=0 -L "${INTERDIR}" | awk '{print $1}')
+		SZ2=$(du --max-dept=0 -L "${FINALDIR}" | awk '{print $1}')
+		ABS_DIFF=$(
+			echo "
+				if ($SZ1 > $SZ2) {
+					$SZ1 - $SZ2
+				} else {
+					$SZ2 - $SZ1
+				}" | bc)
 
-		PUSHD "${FINALDIR}"
+		#Check sanity. Note: using modern bash syntax
+		if [ $ABS_DIFF -gt $AUTOR_DIFFSZ_OK ]; then
+			#Size differs too much. I.e. error detected.
+			echo "Size differs too much after dvdauthor" 1>&2
+		    echo "   abs($SZ1 - $SZ2) = $ABS_DIFF > $AUTOR_DIFFSZ_OK" 1>&2
+			echo "Check logs. Directories used so far are kept as is" 1>&2
+			echo "Check logs. Directories used so far are kept as is" 1>&2
+			exit 1
+		fi
+
 		FINAL_FN="$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4
+		#Consider optionlize MUVIDIR
 		MUVIDIR=${MUVIDIR-${TRANSDIR}}
+	
+		PUSHD "${FINALDIR}"
 
 		echo "=========================================="
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
@@ -165,6 +201,15 @@ function tc_from_vobdir() {
 			$THREADS $SLANG $FF_EXTRA ${MUVIDIR}/${FINAL_FN}
 
 		POPD
+
+		# If we read this far (i.e. no errors caught) then it should be OK
+		# to concider removing intermediate directories and also to move the
+		# source dir into "done" directory
+		
+		if [ "X${KEEP}" == "Xno" ]; then
+			rm -rf "${INTERDIR}"
+			rm -rf "${FINALDIR}"
+		fi
 	done
 	POPD
 }
@@ -179,8 +224,8 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 	set -u
 	set -e
 	#set -x
+	set -o pipefail
 
-	clear
 	echo "${TC_SH_INFO} started: $(date +"%D %T")"
 	echo
 	#time tc "$@"

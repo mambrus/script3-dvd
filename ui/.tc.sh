@@ -19,8 +19,13 @@ DEF_MF_MAXSZ=1150000000
 DEF_MF_MIN=3
 DEF_MF_MAX=6
 DEF_COL1_WIDTH=20 #Any sane value. This is just for looks
-DEF_SLANG="swe"
 DEF_THREADS=$(get_nr_cpu)
+
+# Max difference in size in bytes after transcoding is done
+# This is used to check is transcoding was successful or not
+DEF_AUTOR_DIFFSZ_OK=1000000
+
+#Options to be used for ffmpeg/avconv
 DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -acodec aac"
 DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -aq 100"
 #DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -ac 2"
@@ -28,8 +33,8 @@ DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -aq 100"
 DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -vcodec libx264"
 DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -vpre slow"
 DEF_FF_EXTRAALLT="${DEF_FF_EXTRAALLT} -crf 24"
-
 DEF_FF_EXTRA="${DEF_FF_EXTRA} -ac 2"
+DEF_FF_SLANG="swe"
 
 function print_tc_help() {
 	local CMD_STR="$(basename ${0})"
@@ -203,7 +208,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:t:vkS OPTION; do
+	while getopts hd:i:Tt:vkS OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -218,6 +223,9 @@ EOF
 			;;
 		t)
 			TRANSDIR=$OPTARG
+			;;
+		T)
+			SKIP_AUTHORING="yes"
 			;;
 		i)
 			ISO=$OPTARG
@@ -267,12 +275,14 @@ EOF
 	MF_MIN=${MF_MIN-${DEF_MF_MIN}}
 	MF_MAX=${MF_MAX-${DEF_MF_MAX}}
 	COL1_WIDTH=${COL1_WIDTH-${DEF_COL1_WIDTH}}
+	AUTOR_DIFFSZ_OK=${AUTOR_DIFFSZ_OK-${DEF_AUTOR_DIFFSZ_OK}}
+	SKIP_AUTHORING=${SKIP_AUTHORING-"no"}
 
-	SLANG=${SLAN-${DEF_SLANG}}
+	SLANG=${SLANG-${DEF_FF_SLANG}}
 	SLANG="-slang ${SLANG}"
 	THREADS=${THREADS-${DEF_THREADS}}
 	THREADS="-threads ${THREADS}"
 
 	FF_EXTRA=${FF_EXTRA-${DEF_FF_EXTRA}}
-	#FF_EXTRA="${FF_EXTRA-${FF_EXTRAALLT}"
+	#FF_EXTRA="${FF_EXTRA-"${FF_EXTRAALLT} ${DEF_FF_EXTRA}"}"
 
