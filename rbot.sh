@@ -87,6 +87,7 @@ if [ "$RBOT_SH" == $( ebasename $0 ) ]; then
 
 	set -u
 	set -e
+	#set -x
 	set -o pipefail
 
 	echo "${RBOT_SH_INFO} started: $(date +"%D %T")"

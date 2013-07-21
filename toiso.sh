@@ -84,6 +84,9 @@ if [ "$TOISO_SH" == $( ebasename $0 ) ]; then
 
 	set -u
 	set -e
+	#set -x
+	set -o pipefail
+
 	echo "${TOISO_SH_INFO} started: $(date +"%D %T")"
 	time toiso "$@"
 	echo "${TOISO_SH_INFO} stopped: $(date +"%D %T")"
