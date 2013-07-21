@@ -9,6 +9,35 @@ if [ -z $DOT_FUNCS_SH ]; then
 
 DOT_FUNCS_SH=".funcs.sh"
 
+#Trap handling for SIGERR
+declare -a on_err_items
+function on_err()
+{
+    for i in "${on_err_items[@]}"
+    do
+        echo "on_err: $i"
+        eval $i
+    done
+}
+
+function add_on_err()
+{
+    local n=${#on_err_items[*]}
+    on_err_items[$n]="$*"
+    if [[ $n -eq 0 ]]; then
+        echo "Setting trap"
+        trap on_err ERR
+    fi
+}
+# Work-around traps limitations in loops e.t.a.
+# Use like this:
+# sonething_that_fails || signal_error
+function signal_err() {
+	echo "Fake trap invoked" 1>&2
+	on_err
+	false
+}
+
 #Play a notification tune
 function play_tune() {
 	if [ "X${SILENT}" == "Xno" ]; then
