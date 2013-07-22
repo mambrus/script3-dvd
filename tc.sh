@@ -104,8 +104,9 @@ function tc_from_iso_dvdcopy() {
 		sed -E 's/\.(ISO|iso)$//' | \
 		sed -e 's/ /_/g')
 	FINAL_FN="${FINAL_FN}.mp4"
+	TDIR="${TDIR}_COPYDIR_${FINAL_FN}"
 
-	add_on_err err_tc_from_iso_mounted "$TDIR"
+	add_on_err err_tc_from_iso_dvdcopy "$TDIR"
 	
 	echo -e "Copying main feature from \\n[$1] into \\n[$TDIR]"
 	time dvdbackup -i "${1}" -p -F -o "${TDIR}"
@@ -132,6 +133,7 @@ function tc_from_iso_mounted() {
 		sed -E 's/\.(ISO|iso)$//' | \
 		sed -e 's/ /_/g')
 	FINAL_FN="${FINAL_FN}.mp4"
+	MOUNT="${MOUNT}_MOUNT_${FINAL_FN}"
 	
 	add_on_err err_tc_from_iso_mounted "$MOUNT"
 
@@ -150,7 +152,7 @@ function tc_from_iso() {
 	if [ $MOUNT_ISO == "yes" ]; then
 		tc_from_iso_mounted "$1"
 	else
-		tc_from_iso_dvdcopy() "$1"
+		tc_from_iso_dvdcopy "$1"
 	fi
 }
 
@@ -191,8 +193,10 @@ function tc_from_vobdir() {
 
 	PUSHD "${TRANSDIR}"
 	for (( I=0; I < ${#PROJ_AR[@]}; I++)); do
-		INTERDIR="${TRANSDIR}/${PROJ_AR[$I]}_WD"
-		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}"
+		local TFINAL_FN=$(basename "${FILENAME}")
+		ESUFFIX="${TFINAL_FN}_$(date +"%s")"
+		INTERDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}_WD"
+		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}"
 		mkdir -p "${INTERDIR}"
 		mkdir -p "${FINALDIR}"
 
