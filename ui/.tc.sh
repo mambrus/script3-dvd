@@ -308,17 +308,25 @@ EOF
 	#dvdauthor options handling
 	SKIP_AUTHORING=${SKIP_AUTHORING-"no"}
 	AUTOR_DIFFSZ_OK=${AUTOR_DIFFSZ_OK-${DEF_AUTOR_DIFFSZ_OK}}
+	set -e
 	#VIDEO options
 	DVDA_VOPS=${DVDA_VOPS="${DEF_DVDA_VOPS}"}
-	DVDA_VOPS=${DVDA_VOPS "--video=${DVDA_VOPS}"}
+	if [ "X${DVDA_VOPS}" != "X" ]; then
+		DVDA_VOPS="--video=${DVDA_VOPS}"
+	fi
 
 	#AUDIO options
 	DVDA_AOPS=${DVDA_AOPS="${DEF_DVDA_AOPS}"}
-	DVDA_AOPS="--audio=${DVDA_AOPS}"
+	if [ "X${DVDA_AOPS}" != "X" ]; then
+		DVDA_AOPS="--audio=${DVDA_AOPS}"
+	fi
 
 	#SUBPICTURE options
 	DVDA_SOPS=${DVDA_SOPS="${DEF_DVDA_SOPS}"}
-	DVDA_SOPS="--subpictures=${DVDA_SOPS}"
+	if [ "X${DVDA_SOPS}" != "X" ]; then
+		DVDA_SOPS="--subpictures=${DVDA_SOPS}"
+	fi
+	set +e
 	
 	#All categories combined
 	DVDA_OPS="${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS}"

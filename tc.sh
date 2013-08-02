@@ -156,7 +156,24 @@ function tc_from_iso() {
 	fi
 }
 
+#Estimate total number of frames of all VOB:s in directory
+function estimate_frames() {
+	PUSHD "${1}"
+	PUSHD "$(dirname "$(find . -iname "*.vob" | head -n1)")"
+	ffprobe "concat:$(echo *.VOB|tr \  \|)" 2>&1 | \
+		awk -F '[: ]+' '
+			/Duration/{DUR=3600*$3+60*$4+$5}
+			/Stream.*fps/{FPS=$17}
+			END{
+				FRMS=DUR*FPS;
+				print DUR" "FPS" "FRMS
+			}'
+	POPD
+	POPD
+}
+
 function tc_from_vobdir() {
+	source .s3..fonts.sh
 	if [ $# -eq 1 ]; then
 		VOBDIR="${1}"
 	else
@@ -212,6 +229,9 @@ function tc_from_vobdir() {
 
 		echo "Removing any menu VOB (tossing it away, worthless)..."
 		rm -f *0.VOB
+
+		FONT_BOLD=${FONT_BOLD-""}
+		FONT_NONE=${FONT_NONE-""}
 
 		if [ "X${SKIP_AUTHORING}" == "Xno" ];then
 			echo "=========================================="
@@ -273,6 +293,10 @@ function tc_from_vobdir() {
 		echo "=========================================="
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
 			"[{${MUVIDIR}/${FINAL_FN}}]"
+		echo -e "Expected stats (Time fps frames):"
+		#Use un-authored directory as duration is unreliable after process
+		echo "=========================================="
+		estimate_frames "${INTERDIR}"
 		echo "=========================================="
 		time ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
 			$THREADS $SLANG $FF_EXTRA ${MUVIDIR}/${FINAL_FN}
