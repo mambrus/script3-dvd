@@ -175,13 +175,20 @@ function estimate_frames() {
 #List Audio-channels in directory of VOB:s,
 # sorted by the highest bps first
 function audio_tracks() {
+	local TMP=$(tmpname tracks)
 	PUSHD "${1}"
 	PUSHD "$(dirname "$(find . -iname "*.vob" | head -n1)")"
 	ffprobe "concat:$(echo *.VOB|tr \  \|)" 2>&1 | \
 		grep Stream | grep Audio | \
 		grep "kb/s" | \
 		sed -E 's/(.*#)([0-9]\.[0-9])(.*) ([0-9]+)( kb\/s)/\4;\2/' | \
-		sort -nr -k2 -t';'
+		sort -nr -k2 -t';' > $TMP
+	local MAX_BPS=$(head -n1 < $TMP | cut -f1 -d';')
+	#Ouput streams with highest PBS, if several ascending sorted by #stream
+	grep $MAX_BPS  $TMP | sort -n -k2 -t';'
+	#Output the rest in any, descending
+	grep -v $MAX_BPS  $TMP | sort -nr -k1,2 -t';' || true
+	rm -f $TMP
 	POPD
 	POPD
 }
@@ -292,7 +299,6 @@ function tc_from_vobdir() {
 			#Size differs too much. I.e. error detected.
 			echo "Size differs too much after dvdauthor" 1>&2
 		    echo "   abs($SZ1 - $SZ2) = $ABS_DIFF > $AUTOR_DIFFSZ_OK" 1>&2
-			echo "Check logs. Directories used so far are kept as is" 1>&2
 			echo "Check logs. Directories used so far are kept as is" 1>&2
 			signal_err
 			exit 1
