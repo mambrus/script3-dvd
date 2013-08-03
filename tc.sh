@@ -179,6 +179,7 @@ function audio_tracks() {
 	PUSHD "$(dirname "$(find . -iname "*.vob" | head -n1)")"
 	ffprobe "concat:$(echo *.VOB|tr \  \|)" 2>&1 | \
 		grep Stream | grep Audio | \
+		grep "kb/s" | \
 		sed -E 's/(.*#)([0-9]\.[0-9])(.*) ([0-9]+)( kb\/s)/\4;\2/' | \
 		sort -nr -k2 -t';'
 	POPD
@@ -314,8 +315,9 @@ function tc_from_vobdir() {
 		ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';')
 		#Assume only one video stream available (true for vob)
 		MAP="-map 0.0 -map ${ATR}"
+		echo "=========================================="
 
-		echo "Invoked as:"
+		echo "Transcoding starting. Invoked as:"
 		echo "=========================================="
 		echo ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
 			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
