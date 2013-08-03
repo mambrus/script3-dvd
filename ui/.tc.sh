@@ -222,7 +222,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:Tt:vkSm OPTION; do
+	while getopts hd:i:Tt:vkSmA: OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -246,6 +246,9 @@ EOF
 			;;
 		i)
 			ISO=$OPTARG
+			;;
+		A)
+			AUDIO_MAP=$OPTARG
 			;;
 		S)
 			SILENT="yes"
@@ -301,6 +304,7 @@ EOF
 	SLANG="-slang ${SLANG}"
 	THREADS=${THREADS-${DEF_THREADS}}
 	THREADS="-threads ${THREADS}"
+	AUDIO_MAP=${AUDIO_MAP-""}
 
 	FF_EXTRA=${FF_EXTRA-${DEF_FF_EXTRA}}
 	#FF_EXTRA="${FF_EXTRA-"${FF_EXTRAALLT} ${DEF_FF_EXTRA}"}"

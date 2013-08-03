@@ -314,13 +314,19 @@ function tc_from_vobdir() {
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
 			"[{${MUVIDIR}/${FINAL_FN}}]"
 
-		echo -e "Audio tracks available to map (best first):"
-		echo "=========================================="
-		audio_tracks "${FINALDIR}"
-		#Assume highest bps is the native language track
-		ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';')
-		#Assume only one video stream available (true for vob)
-		MAP="-map 0.0 -map ${ATR}"
+		if [ "X${AUDIO_MAP}" == "X" ]; then
+			echo -e "Audio tracks available to map (best first):"
+			echo "=========================================="
+			audio_tracks "${FINALDIR}"
+			#Assume highest bps is the native language track
+			ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';')
+			#Assume only one video stream available (true for vob)
+			MAP="-map 0.0 -map ${ATR}"
+		else
+			echo -e "Audio track force-set: [${AUDIO_MAP}]"
+			echo "=========================================="
+			MAP="-map 0.0 -map 0.${AUDIO_MAP}"
+		fi
 		echo "=========================================="
 
 		echo "Transcoding starting. Invoked as:"
