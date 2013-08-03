@@ -181,7 +181,7 @@ function audio_tracks() {
 	ffprobe "concat:$(echo *.VOB|tr \  \|)" 2>&1 | \
 		grep Stream | grep Audio | \
 		grep "kb/s" | \
-		sed -E 's/(.*#)([0-9]\.[0-9])(.*) ([0-9]+)( kb\/s)/\4;\2/' | \
+		sed -E 's/(.*#)([0-9]\.[0-9]+)(.*) ([0-9]+)( kb\/s)/\4;\2/' | \
 		sort -nr -k1 -t';' > $TMP
 	local MAX_BPS=$(head -n1 < $TMP | cut -f1 -d';')
 	#Ouput streams with highest PBS, if several ascending sorted by #stream
