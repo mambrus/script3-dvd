@@ -107,7 +107,7 @@ function tc_from_iso_dvdcopy() {
 	TDIR="${TDIR}_COPYDIR_${FINAL_FN}"
 
 	add_on_err err_tc_from_iso_dvdcopy "$TDIR"
-	
+
 	echo -e "Copying main feature from \\n[$1] into \\n[$TDIR]"
 	time dvdbackup -i "${1}" -p -F -o "${TDIR}"
 
@@ -134,7 +134,7 @@ function tc_from_iso_mounted() {
 		sed -e 's/ /_/g')
 	FINAL_FN="${FINAL_FN}.mp4"
 	MOUNT="${MOUNT}_MOUNT_${FINAL_FN}"
-	
+
 	add_on_err err_tc_from_iso_mounted "$MOUNT"
 
 	echo "Creating mount-point [$MOUNT] ..."
@@ -166,8 +166,21 @@ function estimate_frames() {
 			/Stream.*fps/{FPS=$17}
 			END{
 				FRMS=DUR*FPS;
-				print DUR" "FPS" "FRMS
+				print FRMS" "FPS" "DUR
 			}'
+	POPD
+	POPD
+}
+
+#List Audio-channels in directory of VOB:s,
+# sorted by the highest bps first
+function audio_tracks() {
+	PUSHD "${1}"
+	PUSHD "$(dirname "$(find . -iname "*.vob" | head -n1)")"
+	ffprobe "concat:$(echo *.VOB|tr \  \|)" 2>&1 | \
+		grep Stream | grep Audio | \
+		sed -E 's/(.*#)([0-9]\.[0-9])(.*) ([0-9]+)( kb\/s)/\4;\2/' | \
+		sort -nr -k2 -t';'
 	POPD
 	POPD
 }
@@ -293,13 +306,27 @@ function tc_from_vobdir() {
 		echo "=========================================="
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
 			"[{${MUVIDIR}/${FINAL_FN}}]"
-		echo -e "Expected stats (Time fps frames):"
-		#Use un-authored directory as duration is unreliable after process
+
+		echo -e "Audio tracks available to map (best first):"
 		echo "=========================================="
+		audio_tracks "${FINALDIR}"
+		#Assume highest bps is the native language track
+		ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';')
+		#Assume only one video stream available (true for vob)
+		MAP="-map 0.0 -map ${ATR}"
+
+		echo "Invoked as:"
+		echo "=========================================="
+		echo ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
+			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
+
+		echo -e "Expected stats (#frames fps duration):"
+		echo "=========================================="
+		#Use un-authored directory as duration is unreliable after process
 		estimate_frames "${INTERDIR}"
 		echo "=========================================="
 		time ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
-			$THREADS $SLANG $FF_EXTRA ${MUVIDIR}/${FINAL_FN}
+			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
 
 		POPD
 
