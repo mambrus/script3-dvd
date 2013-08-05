@@ -234,6 +234,7 @@ function tc_from_vobdir() {
 	PUSHD "${TRANSDIR}"
 	for (( I=0; I < ${#PROJ_AR[@]}; I++)); do
 		local TFINAL_FN=$(basename "${FILENAME}")
+		local WARN_INSTEADOF_ERROR="no"
 		ESUFFIX="${TFINAL_FN}_${TMP_TS}"
 		#ESUFFIX="${TFINAL_FN}_1375639081" # <--for debugging. Renumber
 		# using -T flag
@@ -257,17 +258,6 @@ function tc_from_vobdir() {
 		echo "Removing any menu VOB (tossing it away, worthless)..."
 		rm -f *0.VOB
 
-		if [ "X${SKIP_KB}" != "X" ]; then
-			echo -e "${FONT_BOLD}Skipping${FONT_NONE} leading input"\
-				"workaround with [$((1024 * $SKIP_KB))] bytes"
-			echo "AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
-			local AUTOR_DIFFSZ_OK=$((AUTOR_DIFFSZ_OK + 1024 * $SKIP_KB))
-			echo "AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
-			VOB1=$(find . -iname "*1.VOB")
-			mv "$VOB1" "${VOB1}.orig"
-			dd bs=1K if="${VOB1}.orig" of="$VOB1" skip=$SKIP_KB
-		fi
-
 		if [ "X${SKIP_AUTHORING}" == "Xno" ]; then
 			echo "=========================================="
 			echo -e "${FONT_BOLD}Authoring${FONT_NONE} starts"\
@@ -275,18 +265,45 @@ function tc_from_vobdir() {
 			echo -e "Setting options to be used:\\n"\
 				"${FONT_BOLD}${DVDA_OPS}${FONT_NONE}"
 			echo "=========================================="
-			( time (
-				VIDEO_FORMAT=pal dvdauthor \
-					-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} -o "${FINALDIR}" *.VOB
-			) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
-			# Even if allowing errors above, next step will fail because
-			# An *.IFO file isn't created
+			if [ "X${SKIP_KB}" != "X" ]; then
+				echo -e "${FONT_BOLD}Skipping${FONT_NONE} leading input"\
+					"workaround with [$((1024 * $SKIP_KB))] bytes"
+				echo "old AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
+				local AUTOR_DIFFSZ_OK=$((AUTOR_DIFFSZ_OK + 1024 * $SKIP_KB))
+				echo "new AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
+				( time ( cat VTS_0[0-9]_[1-9].VOB | \
+					dd bs=1K skip=$SKIP_KB | \
+					VIDEO_FORMAT=pal dvdauthor \
+						-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} \
+						-o "${FINALDIR}" -
+				) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
+				local WARN_INSTEADOF_ERROR="yes"
+				
+			else
+				( time (
+					VIDEO_FORMAT=pal dvdauthor \
+						-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} \
+						-o "${FINALDIR}" *.VOB
+				) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
+				# Even if allowing errors above, next step will fail because
+				# An *.IFO file isn't created
+			fi
 
 			echo "=========================================="
 			echo -e "Creating a TOC in [${FINALDIR}]"
 			echo "=========================================="
 			time VIDEO_FORMAT=pal dvdauthor \
-					-T -o "${FINALDIR}" || signal_err
+				-T -o "${FINALDIR}" || \
+			(
+				if [ "X${WARN_INSTEADOF_ERROR}" == "Xyes" ]; then
+					echo "WARNING: Error from dvdauthor but ignored."\
+						"Will continue to make a best effort to complete" 1>&2
+					play_tune warn
+				else
+					echo "ERROR: dvdauthor returns error. Not ignored." 1>&2
+					signal_err
+				fi
+			)
 		else
 			echo "=========================================="
 			echo -e "Authoring skipped, linking instead."
@@ -371,7 +388,10 @@ function tc_from_vobdir() {
 		echo -e "Expected stats (#frames fps duration):"
 		echo "=========================================="
 		#Use un-authored directory as duration is unreliable after process
+		echo "The most likely of either this:"
 		estimate_frames "${INTERDIR}"
+		echo "...or this (before & after dvdauthor):"
+		estimate_frames "${FINALDIR}"
 		echo "=========================================="
 		time ffmpeg  -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
 			$THREADS $SLANG $FF_EXTRA $MAP -y "${OUTFILE}"
