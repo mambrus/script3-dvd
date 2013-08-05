@@ -233,6 +233,7 @@ function tc_from_vobdir() {
 	for (( I=0; I < ${#PROJ_AR[@]}; I++)); do
 		local TFINAL_FN=$(basename "${FILENAME}")
 		ESUFFIX="${TFINAL_FN}_$(date +"%s")"
+		#ESUFFIX="${TFINAL_FN}_1375639081" # <--for debugging. Renumber.
 		INTERDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}_WD"
 		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}"
 		mkdir -p "${INTERDIR}"
@@ -240,6 +241,8 @@ function tc_from_vobdir() {
 
 		echo "Moving to workdir [${INTERDIR}]..."
 		PUSHD "${INTERDIR}"
+		FONT_BOLD=${FONT_BOLD-""}
+		FONT_NONE=${FONT_NONE-""}
 
 		#Ability to move instead. If on same device, then much faster. TBD
 		MF=$(main_feature "${VOBS_AR[$I]}")
@@ -251,10 +254,18 @@ function tc_from_vobdir() {
 		echo "Removing any menu VOB (tossing it away, worthless)..."
 		rm -f *0.VOB
 
-		FONT_BOLD=${FONT_BOLD-""}
-		FONT_NONE=${FONT_NONE-""}
+		if [ "X${SKIP_KB}" != "X" ]; then
+			echo -e "${FONT_BOLD}Skipping${FONT_NONE} leading input"\
+				"workaround with [$((1024 * $SKIP_KB))] bytes"
+			echo "AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
+			local AUTOR_DIFFSZ_OK=$((AUTOR_DIFFSZ_OK + 1024 * $SKIP_KB))
+			echo "AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
+			VOB1=$(find . -iname "*1.VOB")
+			mv "$VOB1" "${VOB1}.orig"
+			dd bs=1K if="${VOB1}.orig" of="$VOB1" skip=$SKIP_KB
+		fi
 
-		if [ "X${SKIP_AUTHORING}" == "Xno" ];then
+		if [ "X${SKIP_AUTHORING}" == "Xno" ]; then
 			echo "=========================================="
 			echo -e "${FONT_BOLD}Authoring${FONT_NONE} starts"\
 				"from\\n [${INTERDIR}] to\\n [${FINALDIR}]"
@@ -303,8 +314,12 @@ function tc_from_vobdir() {
 			signal_err
 			exit 1
 		fi
+		echo -e "Project name: [${FONT_BOLD}${PROJ_AR[$I]}${FONT_NONE}]"
+		if [ "X${FINAL_FN}" == "X" ]; then
+			FINAL_FN="$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4
+		fi
+		echo -e "Output name: [${FONT_BOLD}${FINAL_FN}${FONT_NONE}]"
 
-		FINAL_FN=${FINAL_FN-"$(echo ${PROJ_AR[$I]} | sed -e 's/ /_/g')".mp4}
 		#Consider optionlize MUVIDIR
 		MUVIDIR=${MUVIDIR-${TRANSDIR}}
 
@@ -312,9 +327,14 @@ function tc_from_vobdir() {
 
 		echo "=========================================="
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
-			"[{${MUVIDIR}/${FINAL_FN}}]"
+			"[${MUVIDIR}/${FINAL_FN}]"
 
-		if [ "X${AUDIO_MAP}" == "X" ]; then
+		if [ "X${AUDIO_MAP}" == "Xno" ]; then
+			echo -e "Audio tracks selection handed to ffmpeg. "\
+				"${FONT_BOLD}BRACE!${FONT_NONE}"
+			echo "=========================================="
+			MAP=""
+		elif [ "X${AUDIO_MAP}" == "X" ]; then
 			echo -e "Audio tracks available to map (best first):"
 			echo "=========================================="
 			audio_tracks "${FINALDIR}"
@@ -331,15 +351,17 @@ function tc_from_vobdir() {
 
 		echo "Transcoding starting. Invoked as:"
 		echo "=========================================="
-		echo ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
+		echo -en "${FONT_BOLD}"
+		echo -n ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
 			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
+		echo -e "${FONT_NONE}"
 
 		echo -e "Expected stats (#frames fps duration):"
 		echo "=========================================="
 		#Use un-authored directory as duration is unreliable after process
 		estimate_frames "${INTERDIR}"
 		echo "=========================================="
-		time ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
+		time ffmpeg  -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
 			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
 
 		POPD

@@ -222,7 +222,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:Tt:vkSmA: OPTION; do
+	while getopts hd:i:Tt:vkSmA:s: OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -249,6 +249,9 @@ EOF
 			;;
 		A)
 			AUDIO_MAP=$OPTARG
+			;;
+		s)
+			SKIP_KB=$OPTARG
 			;;
 		S)
 			SILENT="yes"
@@ -305,10 +308,11 @@ EOF
 	THREADS=${THREADS-${DEF_THREADS}}
 	THREADS="-threads ${THREADS}"
 	AUDIO_MAP=${AUDIO_MAP-""}
+	SKIP_KB=${SKIP_KB-""}
 
 	FF_EXTRA=${FF_EXTRA-${DEF_FF_EXTRA}}
 	#FF_EXTRA="${FF_EXTRA-"${FF_EXTRAALLT} ${DEF_FF_EXTRA}"}"
-	
+
 	#dvdauthor options handling
 	SKIP_AUTHORING=${SKIP_AUTHORING-"no"}
 	AUTOR_DIFFSZ_OK=${AUTOR_DIFFSZ_OK-${DEF_AUTOR_DIFFSZ_OK}}
@@ -331,7 +335,7 @@ EOF
 		DVDA_SOPS="--subpictures=${DVDA_SOPS}"
 	fi
 	set +e
-	
+
 	#All categories combined
 	DVDA_OPS="${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS}"
 
