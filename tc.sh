@@ -368,7 +368,15 @@ function tc_from_vobdir() {
 			echo "=========================================="
 			audio_tracks "${FINALDIR}"
 			#Assume highest bps is the native language track
-			ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';')
+			ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';') || \
+			(
+				
+				echo -e "ERROR: Detecting audio tracks failed. Most likely"\
+					"initial frames are broken. You could try skip a few"\
+					"using the -s option" 1>&1
+				#Signal fail and go exit
+				signal_err
+			)
 			#Assume only one video stream available (true for vob)
 			MAP="-map 0.0 -map ${ATR}"
 		else
