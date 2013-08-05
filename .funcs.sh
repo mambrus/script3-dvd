@@ -43,7 +43,7 @@ function play_tune() {
 	if [ "X${SILENT}" == "Xno" ]; then
 		local PLAY=$(\
 			which play && \
-			play ${HOME}/bin/.dvd..${1}.wav >/dev/null 2>&1 \
+			play -v0.3 ${HOME}/bin/.dvd..${1}.wav >/dev/null 2>&1 \
 		)
 	fi
 }

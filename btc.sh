@@ -5,7 +5,7 @@ ORG_DIR=/media/mambrus/Elements/videos
 #NAMES_DIR=/home/mambrus/Videos/trans_perhaps/_failed3
 NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/want/failed1
 DONE=done_loose_vobs
-ONOK_MOVE="no"
+ONOK_MOVE="yes"
 DEF_VOB_ARGS="-s10000"
 SPECIAL=./special.txt
 
