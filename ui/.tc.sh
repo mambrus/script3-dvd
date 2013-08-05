@@ -21,6 +21,10 @@ DEF_MF_MAX=6
 DEF_COL1_WIDTH=20 #Any sane value. This is just for looks
 DEF_THREADS=$(get_nr_cpu)
 
+#Time-stamp, used for temp-file/dir names and for output filename if file is
+#is already present. This Can be overloaded for debugging (see -T flag)
+DEF_TMP_TS=$(date +"%s")
+
 # Max difference in size in bytes after transcoding is done
 # This is used to check is transcoding was successful or not
 DEF_AUTOR_DIFFSZ_OK=1000000
@@ -222,7 +226,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:Tt:vkSmA:s: OPTION; do
+	while getopts hd:i:zt:T:vkSmA:s: OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -239,6 +243,9 @@ EOF
 			TRANSDIR=$OPTARG
 			;;
 		T)
+			TMP_TS=$OPTARG
+			;;
+		z)
 			SKIP_AUTHORING="yes"
 			;;
 		m)
@@ -290,6 +297,7 @@ EOF
 	TRANSDIR=${TRANSDIR-$(pwd)}
 	TRANSDIR=${TRANSDIR%"/"}
 	PROJECT=${PROJECT-${DEF_PROJ}}
+	TMP_TS=${TMP_TS-${DEF_TMP_TS}}
 	ISO=${ISO-${DEF_ISO}}
 	VERBOSE=${VERBOSE-"no"}
 	KEEP=${KEEP-"no"}

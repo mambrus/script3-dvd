@@ -195,6 +195,8 @@ function audio_tracks() {
 
 function tc_from_vobdir() {
 	source .s3..fonts.sh
+	add_on_err play_tune bad
+
 	if [ $# -eq 1 ]; then
 		VOBDIR="${1}"
 	else
@@ -232,8 +234,9 @@ function tc_from_vobdir() {
 	PUSHD "${TRANSDIR}"
 	for (( I=0; I < ${#PROJ_AR[@]}; I++)); do
 		local TFINAL_FN=$(basename "${FILENAME}")
-		ESUFFIX="${TFINAL_FN}_$(date +"%s")"
-		#ESUFFIX="${TFINAL_FN}_1375639081" # <--for debugging. Renumber.
+		ESUFFIX="${TFINAL_FN}_${TMP_TS}"
+		#ESUFFIX="${TFINAL_FN}_1375639081" # <--for debugging. Renumber
+		# using -T flag
 		INTERDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}_WD"
 		FINALDIR="${TRANSDIR}/${PROJ_AR[$I]}_${ESUFFIX}"
 		mkdir -p "${INTERDIR}"
@@ -324,10 +327,19 @@ function tc_from_vobdir() {
 		MUVIDIR=${MUVIDIR-${TRANSDIR}}
 
 		PUSHD "${FINALDIR}"
+		
+		if [ -f ${MUVIDIR}/${FINAL_FN} ]; then
+			# previous-file already there. Use another name as batch
+			# processing might find several different projects following  the
+			# same nameing convention.
+			local OUTFILE="${MUVIDIR}/${TMP_TS}_${FINAL_FN}"
+		else
+			local OUTFILE="${MUVIDIR}/${FINAL_FN}"
+		fi
 
 		echo "=========================================="
 		echo -e "Transcoding starts from\\n [${FINALDIR}] to\\n"\
-			"[${MUVIDIR}/${FINAL_FN}]"
+			"[${OUTFILE}]"
 
 		if [ "X${AUDIO_MAP}" == "Xno" ]; then
 			echo -e "Audio tracks selection handed to ffmpeg. "\
@@ -352,8 +364,8 @@ function tc_from_vobdir() {
 		echo "Transcoding starting. Invoked as:"
 		echo "=========================================="
 		echo -en "${FONT_BOLD}"
-		echo -n ffmpeg -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
-			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
+		echo -n ffmpeg -i '"'"concat:$(echo VIDEO_TS/*.VOB|tr \  \|)"'"' \
+			$THREADS $SLANG $FF_EXTRA $MAP -y ${OUTFILE}
 		echo -e "${FONT_NONE}"
 
 		echo -e "Expected stats (#frames fps duration):"
@@ -362,7 +374,7 @@ function tc_from_vobdir() {
 		estimate_frames "${INTERDIR}"
 		echo "=========================================="
 		time ffmpeg  -i "concat:$(echo VIDEO_TS/*.VOB|tr \  \|)" \
-			$THREADS $SLANG $FF_EXTRA $MAP -y ${MUVIDIR}/${FINAL_FN}
+			$THREADS $SLANG $FF_EXTRA $MAP -y "${OUTFILE}"
 
 		POPD
 
