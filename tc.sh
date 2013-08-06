@@ -271,14 +271,15 @@ function tc_from_vobdir() {
 				echo "old AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
 				local AUTOR_DIFFSZ_OK=$((AUTOR_DIFFSZ_OK + 1024 * $SKIP_KB))
 				echo "new AUTOR_DIFFSZ_OK=$AUTOR_DIFFSZ_OK"
-				( time ( cat VTS_0[0-9]_[1-9].VOB | \
+				( time ( cat VTS_[0-9][0-9]_[1-9].VOB | \
 					dd bs=1K skip=$SKIP_KB | \
 					VIDEO_FORMAT=pal dvdauthor \
-						-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} \
+						-t ${DVDA_VOPS} ${DVDA_AOPS}  \
 						-o "${FINALDIR}" -
 				) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
 				local WARN_INSTEADOF_ERROR="yes"
 				
+#						-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} \
 			else
 				( time (
 					VIDEO_FORMAT=pal dvdauthor \
