@@ -3,10 +3,13 @@
 #ORG_DIR=/media/mambrus/Elements/
 ORG_DIR=/media/mambrus/Elements/videos
 #NAMES_DIR=/home/mambrus/Videos/trans_perhaps/_failed3
-NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/want/failed1
-DONE=done_loose_vobs
+#NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/want/failed1
+#NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/newones
+NAMES_DIR=/home/mambrus/Video/trans2_perhaps/maybe_remain
+DONE=done_mayberemain
 ONOK_MOVE="yes"
 DEF_VOB_ARGS="-s10000"
+DEF_ISO_ARGS="-s0"
 SPECIAL=./special.txt
 
 # Transcode and on success, move original to...
@@ -24,18 +27,16 @@ function tc_onsuccess_mvoto() {
 		)
 	fi
 	local FAIL="no"
-	if [ "X${ARGS}" == "X" ]; then
-		#Not set (i.e project not found)
+
+	if [ "X${ARGS}" == "X" ]; then #I.e project need no special treatment
 		echo "Special args: NONE"
 
-		if [ -d "${PROJECT}" ]; then
-			# If directory, it must be a VOBs-project
-			echo "Project is a VOB-dir. Default args appied: [${EARGS}]"
-			local ARGS="$EARGS"
-		fi
+		echo "Default args appied: [${EARGS}]"
+		local ARGS="$EARGS"
 	else
 		local ARGS=$(echo "${ARGS}" | cut -f2 -d";")
 		echo "Special args: $ARGS"
+		ARGS="${ARGS} -s0"
 	fi
 
 	dvd.tc.sh $ARGS -t "$(pwd)" "${PROJECT}" || local FAIL="yes"
@@ -43,8 +44,8 @@ function tc_onsuccess_mvoto() {
 		echo "Transcoding succeeded. "
 		if [ "X${ONOK_MOVE}" == "Xyes" ]; then
 			echo "Moving original..."
-			mkdir -p "$ORG_DIR/../${DONE}/$(dirname $F)" ;  
-			mv $F "$ORG_DIR/../${DONE}/$(dirname $F)/$(basename $F)"
+			mkdir -p "$ORG_DIR/${DONE}/$(dirname $F)" ;  
+			mv $F "$ORG_DIR/${DONE}/$(dirname $F)/$(basename $F)"
 		fi
 	fi
 }
@@ -66,14 +67,13 @@ function find_projects() {
 		echo "==================";
 		if [ -d "${F}" ]; then
 			# This is a VOBDIR. Assume broken with initial garbage. 
-			tc_onsuccess_mvoto "${F}" $DEF_VOB_ARGS
+			tc_onsuccess_mvoto "${F}" "$DEF_VOB_ARGS"
 			echo "Done with VOB-project ["${F}"]"
 		else
-			tc_onsuccess_mvoto "${F}"
+			tc_onsuccess_mvoto "${F}" "$DEF_ISO_ARGS"
 			echo "Done with ISO-project ["${F}"]"
 		fi 
 	done 
 } 
 
 find_projects 2>&1 | tee -a /tmp/log_append_loosevobs.txt
-
