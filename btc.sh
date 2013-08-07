@@ -11,6 +11,7 @@ ONOK_MOVE="yes"
 DEF_VOB_ARGS="-s10000"
 DEF_ISO_ARGS="-s0"
 SPECIAL=./special.txt
+LOG=./log.txt
 
 # Transcode and on success, move original to...
 # File to be transcoded is checked against list of files in need for additional
@@ -76,4 +77,4 @@ function find_projects() {
 	done 
 } 
 
-find_projects 2>&1 | tee -a /tmp/log_append_loosevobs.txt
+find_projects 2>&1 | tee -a ${LOG}
