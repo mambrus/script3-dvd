@@ -48,7 +48,7 @@ function rbot() {
 			play ${HOME}/bin/.dvd..rbot_newrun.wav >/dev/null 2>&1 \
 		)
 		set e+
-		dvd.toiso.sh || \
+		dvd.toiso.sh ${KEEP} || \
 			PLAY=$(\
 				which play && \
 				play ${HOME}/bin/.dvd..bad.wav >/dev/null 2>&1 \

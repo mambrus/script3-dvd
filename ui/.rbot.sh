@@ -168,7 +168,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hD:v OPTION; do
+	while getopts hD:vk OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -180,6 +180,9 @@ EOF
 			;;
 		D)
 			DRIVE=$OPTARG
+			;;
+		k)
+			KEEP="-k"
 			;;
 		v)
 			VERBOSE="yes"
@@ -202,5 +205,6 @@ EOF
 
 	DRIVE=${DRIVE-${DEF_DRIVE}}
 	VERBOSE=${VERBOSE-"no"}
+	KEEP=${KEEP-""}
 	INO_EXTRAS=${INO_EXTRAS-""}
 
