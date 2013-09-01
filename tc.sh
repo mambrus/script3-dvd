@@ -425,7 +425,10 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 
 	TC_SH_INFO="dvd.${TC_SH}"
 	source .dvd.ui..tc.sh
-	source futil.tmpname.sh
+	
+	unset TMPNAME_SH
+	source futil.tmpname.sh -a
+	tmpname_flags_init "-a"
 
 	set -u
 	set -e
@@ -451,6 +454,7 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 	echo "${TC_SH_INFO} stopped: $(date +"%D %T")"
 	play_tune alert
 	RC=$?
+	tmpname_cleanup
 
 	exit $RC
 fi
