@@ -1,12 +1,15 @@
 #!/bin/bash
 
 #ORG_DIR=/media/mambrus/Elements/
-ORG_DIR=/media/mambrus/Elements/videos
+#ORG_DIR=/media/mambrus/Elements/videos
+ORG_DIR=/media/mambrus/Elements/
 #NAMES_DIR=/home/mambrus/Videos/trans_perhaps/_failed3
 #NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/want/failed1
 #NAMES_DIR=/home/mambrus/Videos/trans2_perhaps/newones
-NAMES_DIR=/home/mambrus/Video/trans2_perhaps/maybe_remain
-DONE=done_mayberemain
+#NAMES_DIR=/home/mambrus/Video/trans2_perhaps/maybe_remain
+NAMES_DIR=/home/mambrus/Videos/trans3_perhaps/sista
+DONE_SDIR=done_sista
+MV_TO_DIR=/media/mambrus/Elements/${DONE_SDIR}
 ONOK_MOVE="yes"
 DEF_VOB_ARGS="-s10000"
 DEF_ISO_ARGS="-s0"
@@ -45,13 +48,28 @@ function tc_onsuccess_mvoto() {
 		echo "Transcoding succeeded. "
 		if [ "X${ONOK_MOVE}" == "Xyes" ]; then
 			echo "Moving original..."
-			mkdir -p "$ORG_DIR/${DONE}/$(dirname $F)" ;  
-			mv $F "$ORG_DIR/${DONE}/$(dirname $F)/$(basename $F)"
+			mkdir -p "${MV_TO_DIR}/$(dirname $F)" ;  
+			mv $F "${MV_TO_DIR}/$(dirname $F)/$(basename $F)"
 		fi
 	fi
 }
 
 function find_projects() {
+	echo "Looking for patters (extraxted from filenames in dir): "
+	echo "===================================="
+	for I in $(
+		ls $NAMES_DIR | sed -E 's/.mp4$/_/' | tr '_' '*'); 
+	do echo $I; done | sort; 
+	echo "===================================="
+	echo "Found: "
+	echo "===================================="
+	for I in $(
+		ls $NAMES_DIR | sed -E 's/.mp4$/_/' | tr '_' '*'); 
+	do find -L $ORG_DIR -name $I; done | sort; 
+	echo "===================================="
+	echo "Continue with the actual job: "
+	echo "===================================="
+
 	#Find project(s). Naming convention of project:
 	# iso-project: path & filename. Must point at valid iso-file
 	# vobs-project: path. Must point at directory. Directory is startpoint
@@ -61,7 +79,7 @@ function find_projects() {
 		for I in $(
 			#ls $NAMES_DIR | sed -E 's/.mp4$/.iso/' | tr '_' '*'); 
 			ls $NAMES_DIR | sed -E 's/.mp4$/_/' | tr '_' '*'); 
-		do find $ORG_DIR -name $I; done | sort); 
+		do find -L $ORG_DIR -name $I; done | sort); 
 	do 
 		echo "==================";
 		echo $F; 
