@@ -278,7 +278,7 @@ function tc_from_vobdir() {
 						-o "${FINALDIR}" -
 				) 2>&1 ) | grep -Ev '^WARN' || true #<-- Note: true
 				local WARN_INSTEADOF_ERROR="yes"
-				
+
 #						-t ${DVDA_VOPS} ${DVDA_AOPS} ${DVDA_SOPS} \
 			else
 				( time (
@@ -345,7 +345,7 @@ function tc_from_vobdir() {
 		MUVIDIR=${MUVIDIR-${TRANSDIR}}
 
 		PUSHD "${FINALDIR}"
-		
+
 		if [ -f ${MUVIDIR}/${FINAL_FN} ]; then
 			# previous-file already there. Use another name as batch
 			# processing might find several different projects following  the
@@ -371,7 +371,7 @@ function tc_from_vobdir() {
 			#Assume highest bps is the native language track
 			ATR=$(audio_tracks "${FINALDIR}" | head -n1 | cut -f2 -d';') || \
 			(
-				
+
 				echo -e "ERROR: Detecting audio tracks failed. Most likely"\
 					"initial frames are broken. You could try skip a few"\
 					"using the -s option" 1>&1
@@ -425,8 +425,7 @@ if [ "$TC_SH" == $( ebasename $0 ) ]; then
 
 	TC_SH_INFO="dvd.${TC_SH}"
 	source .dvd.ui..tc.sh
-	
-	unset TMPNAME_SH
+
 	source futil.tmpname.sh -a
 	tmpname_flags_init "-a"
 
