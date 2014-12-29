@@ -21,9 +21,9 @@ function toiso() {
 	# enough VOBS to to create our own main-feature (which can me authored if
 	# needed)
 	if [ "X${VERBOSE}" == "Xyes" ]; then
-		time dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}"
+		time dvdbackup -i ${DRIVE} -M -p -o "${RIPDIR}/${PROJECT}"
 	else
-		time (dvdbackup -i /dev/dvd -M -p -o "${RIPDIR}/${PROJECT}" >> \
+		time (dvdbackup -i ${DRIVE} -M -p -o "${RIPDIR}/${PROJECT}" >> \
 			$TMP_OUT_FILE 2>&1 )
 	fi
 	if [ "X${PROJECT}" == "X${DEF_PROJ}" ]; then
@@ -42,8 +42,8 @@ function toiso() {
 	FEATURE_CREATED=$(ls ${RIPDIR}/${PROJECT})
 
 	if [ "X${ISO}" == "X${DEF_ISO}" ]; then
-		#No specific iso-file-name given. Autodetect one
-		
+		#No specific iso-file-name given. Auto-detect one
+
 		NEW_ISO="$(ls ${RIPDIR}/${PROJECT} | \
 			sed -e 's/[[:space:]]\+/_/g').iso"
 		ISO="${NEW_ISO}"

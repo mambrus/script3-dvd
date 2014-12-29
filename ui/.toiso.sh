@@ -7,11 +7,13 @@
 
 source .s3..fonts.sh
 source .s3..uifuncs.sh
+source .dvd..funcs.sh
 
 #Some defaults
 TS=$(date +"%s")
 DEF_PROJ="DVD_TMP_$TS"
 DEF_ISO="dvd_1337.iso"
+DEF_DRIVE=$(autodetect_drive)
 
 function print_toiso_help() {
 	local CMD_STR="$(basename ${0})"
@@ -120,6 +122,9 @@ $(echo -e ${FONT_BOLD}OPTIONS${FONT_NONE})
             Use this directory as the root-dir to work in. This would
             typically be ${FONT_UNDERLINE}~/Videos${FONT_NONE} or similar.")
 
+        $(echo -e "${FONT_BOLD}-D${FONT_NONE} devpath
+            Use another device as drive. Default is [${FONT_UNDERLINE}${DEF_DRIVE}${FONT_NONE}]")
+
         $(echo -e "${FONT_BOLD}-i${FONT_NONE} isofile
             Final file-name will be packed info ${FONT_UNDERLINE}isofile${FONT_NONE}")
 
@@ -170,7 +175,7 @@ EOF
 
 	ORIG_ARGS="$@"
 
-	while getopts hd:i:vk OPTION; do
+	while getopts hd:D:i:vk OPTION; do
 		case $OPTION in
 		h)
 		if [ -t 1 ]; then
@@ -182,6 +187,9 @@ EOF
 			;;
 		d)
 			RIPDIR=$OPTARG
+			;;
+		D)
+			DRIVE=$OPTARG
 			;;
 		i)
 			ISO=$OPTARG
@@ -214,8 +222,14 @@ EOF
 	fi
 
 	RIPDIR=${RIPDIR-$(pwd)}
+	DRIVE=${DRIVE-${DEF_DRIVE}}
 	PROJECT=${PROJECT-${DEF_PROJ}}
 	ISO=${ISO-${DEF_ISO}}
 	VERBOSE=${VERBOSE-"no"}
 	KEEP=${KEEP-"no"}
 
+	if [ "X${DEF_DRIVE}" == "X" ]; then
+		echo "Runtime error: No drive set an none auto-detected." 1>&2
+		echo "For help, type: $TOISO_SH_INFO -h" 1>&2
+		exit 3
+	fi

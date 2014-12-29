@@ -7,9 +7,10 @@
 
 source .s3..fonts.sh
 source .s3..uifuncs.sh
+source .dvd..funcs.sh
 
 #Some defaults
-DEF_DRIVE="/dev/dvd"
+DEF_DRIVE=$(autodetect_drive)
 
 function print_rbot_help() {
 	local CMD_STR="$(basename ${0})"
@@ -46,6 +47,9 @@ $(echo -e ${FONT_BOLD}EXAMPLES${FONT_NONE})
             work-files are tidied away. Make sure you have at least 15G
             free space (process does not use temp-directory due to transfer
             penalty).
+
+        $(echo -e "${FONT_BOLD}${CMD_STR} -D${FONT_NONE} devpath")
+            Use another device as drive. Default is [${DEF_DRIVE}]
 
         $(echo -e "${FONT_BOLD}${CMD_STR} -d${FONT_NONE} rootdir")
             Uses rootdir as main rip-directory for the project. The
@@ -117,6 +121,9 @@ $(echo -e ${FONT_BOLD}OPTIONS${FONT_NONE})
         $(echo -e "${FONT_BOLD}-d${FONT_NONE} rootdir
             Use this directory as the root-dir to work in. This would
             typically be ${FONT_UNDERLINE}~/Videos${FONT_NONE} or similar.")
+
+        $(echo -e "${FONT_BOLD}-D${FONT_NONE} devpath
+            Use another device as drive. Default is [${FONT_UNDERLINE}${DEF_DRIVE}${FONT_NONE}]")
 
         $(echo -e "${FONT_BOLD}-i${FONT_NONE} isofile
             Final file-name will be packed info ${FONT_UNDERLINE}isofile${FONT_NONE}")
@@ -208,3 +215,8 @@ EOF
 	KEEP=${KEEP-""}
 	INO_EXTRAS=${INO_EXTRAS-""}
 
+	if [ "X${DEF_DRIVE}" == "X" ]; then
+		echo "Runtime error: No drive set an none auto-detected." 1>&2
+		echo "For help, type: $TOISO_SH_INFO -h" 1>&2
+		exit 3
+	fi

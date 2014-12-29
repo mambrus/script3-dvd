@@ -15,7 +15,7 @@ function rbot() {
 		#Shut inotify up if it doesn't need to be chatty
 		INO_EXTRAS="${INO_EXTRAS}-qq"
 	fi
-	
+
 	#Try open the tray for user if closed
 	set +e
 	eject ${DRIVE} > /dev/null 2>&1
@@ -33,7 +33,7 @@ function rbot() {
 		inotifywait "${INO_EXTRAS}" -e close_nowrite ${DRIVE}
 		echo "About to scan disk [$N] from [${DRIVE}]"
 		inotifywait "${INO_EXTRAS}" -e open ${DRIVE}
-		
+
 		set +e
 		echo "Waiting for mount 1(2) [${DRIVE}]"
 		inotifywait "${INO_EXTRAS}" -e open -t 30 ${DRIVE} || \
@@ -48,7 +48,7 @@ function rbot() {
 			play ${HOME}/bin/.dvd..rbot_newrun.wav >/dev/null 2>&1 \
 		)
 		set e+
-		dvd.toiso.sh ${KEEP} || \
+		dvd.toiso.sh -D ${DRIVE} ${KEEP} || \
 			PLAY=$(\
 				which play && \
 				play ${HOME}/bin/.dvd..bad.wav >/dev/null 2>&1 \
@@ -62,9 +62,11 @@ function rbot() {
 
 		(( N = N + 1 ))
 		echo "You have scanned [$N] disks from [${DRIVE}]"
+		set +e
 		eject
+		set -e
 		echo "Opened [${DRIVE}] for you..."
-		
+
 		set +e
 		inotifywait "${INO_EXTRAS}" -e attrib ${DRIVE}
 		set -e

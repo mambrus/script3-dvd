@@ -49,7 +49,15 @@ function play_tune() {
 }
 
 function get_nr_cpu() {
-	 cat /proc/cpuinfo | grep processor | wc -l
+	cat /proc/cpuinfo | grep processor | wc -l
+}
+
+function autodetect_drive() {
+	local DRIVE=$(ls /dev/dvd 2>/dev/null)
+	if [ "X${DRIVE}" == "X" ]; then
+		DRIVE=$(ls /dev/sr* 2>/dev/null | head -n1)
+	fi
+	echo $DRIVE
 }
 
 function PUSHD() {
