@@ -9,14 +9,6 @@ if [ -z $SRTT_SH ]; then
 
 SRTT_SH="srtt.sh"
 
-
-AWK_FTIME2SEC='
-	function ftime2sec(ftime)
-	{
-		patsplit(ftime,a,/:/);
-	}
-'
-
 function srtt_ftime2sec() {
 	local FTIME=$1
 }
@@ -27,18 +19,10 @@ function srtt_sec2ftime() {
 
 function srtt_pack() {
 	local FNAME=$1
-#	local TAWK "${AWK_FTIME2SEC}" '
-#		/-->/{
-#			print
-#		}
-#	'
 
-	##cat $FNAME | awk "${TAWK}"
-
-	cat $FNAME | awk '
+	cat $FNAME -- | awk '
 		function ftime2sec(ftime)
 		{
-			sec=0;
 			patsplit(ftime,a,/[:,]/,r);
 			return 3600*r[0] + 60*r[1] + strtonum(r[2]"."r[3]);
 		}
@@ -117,12 +101,62 @@ function srtt_pack() {
 
 function srtt_unpack() {
 	local FNAME=$1
+
+	cat $FNAME -- | awk -F";" '
+		function sec2ftime(secs)
+		{
+			hrs=int(secs/3600);
+			secs=secs-hrs*3600;
+
+			mins=int(secs/60)
+			secs=secs-mins*60;
+
+			secs_int=int(secs);
+			secs_frac=secs-secs_int;
+
+			return sprintf("%02d:%02d:%02d,%03d",
+				hrs,mins,secs_int,secs_frac*1000);
+
+		}
+		{
+			print $1
+			print sec2ftime($2)" --> "sec2ftime($3)
+			print $4
+			if (length($5) > 0)
+				print $5
+			printf("\n");
+		}
+	'
+}
+
+function srtt_adjust_time() {
+	local OFFS=$1
+	local GAIN=$2
+	local ZERO=$3
+	local FNAME=$4
+
+	cat $FNAME -- | awk -F";" \
+	-v OFFS=$OFFS \
+	-v GAIN=$GAIN \
+	-v ZERO=$ZERO '
+	{
+		T1=GAIN*$2 - OFFS;
+		T2=GAIN*$3 - OFFS;
+		printf("%d;%f;%f;%s;%s;\n",$1,T1,T2,$4,$5);
+	}
+	'
 }
 
 function srtt() {
 	local FNAME=$1
 
-	srtt_pack $FNAME
+	#srtt_pack $FNAME
+	#srtt_adjust_time $SRTT_OFFS $SRTT_GAIN $SRTT_ZERO $FNAME
+	#srtt_unpack $FNAME
+
+	srtt_pack $FNAME | \
+		srtt_adjust_time $SRTT_OFFS $SRTT_GAIN $SRTT_ZERO | \
+		srtt_unpack
 }
 
 
