@@ -4,6 +4,7 @@
 
 DEF_OFFS="0.0"
 DEF_GAIN="1.0"
+DEF_INV="yes"
 DEF_TMP_NAME="/tmp/${SRTT_SH_INFO}_inter"
 
 function print_srtt_help() {
@@ -86,7 +87,7 @@ EOF
 				exit 3
 			fi
 			SRTT_OPMODE="raw"
-			SRTT_OFFS="${OPTARG}"
+			SRTT_OFFS_0="${OPTARG}"
 			;;
 		k)
 			if [ "X${SRTT_OPMODE}" == "Xassisted" ]; then
@@ -95,7 +96,7 @@ EOF
 				exit 3
 			fi
 			SRTT_OPMODE="raw"
-			SRTT_GAIN="${OPTARG}"
+			SRTT_GAIN_0="${OPTARG}"
 			;;
 		d)
 			SRTT_DEBUG="yes"
@@ -117,21 +118,33 @@ EOF
 	if [ $# -ne 1 ]; then
 		echo "Syntax error: arguments" \
 			"$SRTT_SH_INFO number of arguments should be exactly one:" \
-			"regexp_pattern" 1>&2
+			"input filename" 1>&2
 		echo "For help, type: $SRTT_SH_INFO -h" 1>&2
 		exit 2
 	fi
 
 #Actuating defaults if needed
-	SRTT_OFFS=${SRTT_OFFS-$DEF_OFFS}
-	SRTT_GAIN=${SRTT_GAIN-$DEF_GAIN}
+	SRTT_INV=${SRTT_INV-$DEF_INV}
+	SRTT_OFFS_0=${SRTT_OFFS_0-$DEF_OFFS}
+	SRTT_GAIN_0=${SRTT_GAIN_0-$DEF_GAIN}
 	SRTT_DEBUG=${SRTT_DEBUG-"no"}
 	SRTT_TMP_NAME=${SRTT_TMP_NAME-$DEF_TMP_NAME}
 	SRTT_OPMODE=${SRTT_OPMODE-"raw"}
+	
+	if [ $SRTT_INV == "yes" ]; then
+		SRTT_OFFS=$(echo ${SRTT_OFFS_0} | awk '{print -1.0*$1}')
+		SRTT_GAIN=$(echo ${SRTT_GAIN_0} | awk '{print  1.0/$1}')
+	else
+		SRTT_OFFS=${SRTT_OFFS_0}
+		SRTT_GAIN=${SRTT_GAIN_0}
+	fi
 
 	if [ $SRTT_DEBUG == "yes" ]; then
 		exec 3>&1 1>&2
 		echo "Variables:"
+		echo "  SRTT_INV=$SRTT_INV"
+		echo "  SRTT_OFFS_0=$SRTT_OFFS_0"
+		echo "  SRTT_GAIN_0=$SRTT_GAIN_0"
 		echo "  SRTT_OFFS=$SRTT_OFFS"
 		echo "  SRTT_GAIN=$SRTT_GAIN"
 		echo "  SRTT_DEBUG=$SRTT_DEBUG"
