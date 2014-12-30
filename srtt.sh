@@ -1,9 +1,6 @@
 #!/bin/bash
 # Author: Michael Ambrus (ambrmi09@gmail.com)
 # 2014-12-28
-# This is the back-end for all dvd.*grep.sh tools. All it needs is a pattern
-# in the envvar SRTT_PATTERN. If run as front-end, it will search for
-# everything (which is basically equal to the normal egrep)
 
 if [ -z $SRTT_SH ]; then
 
@@ -20,7 +17,7 @@ function srtt_sec2ftime() {
 function srtt_pack() {
 	local FNAME=$1
 
-	cat $FNAME -- | awk '
+	cat $FNAME -- | dos2unix | awk '
 		function ftime2sec(ftime)
 		{
 			patsplit(ftime,a,/[:,]/,r);
@@ -36,10 +33,10 @@ function srtt_pack() {
 			L_2=0;
 		}
 
-		function exitwerr()
+		function exitwerr(phase)
 		{
-			print > /dev/stderr;
-			print "Error: Format error detected" > /dev/stderr;
+			print "Error: Format error detected: " phase
+			print "Offending line: "$0
 			fflush();
 			exit(1);
 		}
@@ -65,7 +62,7 @@ function srtt_pack() {
 		/*-- Index line --*/
 		/^[0-9]+[[:space:]]*$/{
 			if (L_INDEX || L_TIME || L_1 || L_2)
-				exitwerr();
+				exitwerr("Index-line");
 
 			L_INDEX=1;
 			L_EMPTY=0;
@@ -76,7 +73,7 @@ function srtt_pack() {
 		/*-- Time line --*/
 		/-->/{
 			if (!L_INDEX || L_TIME || L_1 || L_2)
-				exitwerr();
+				exitwerr("Time-line");
 
 			L_TIME=1;
 			printf("%f;%f;",ftime2sec($1),ftime2sec($3));
@@ -86,7 +83,7 @@ function srtt_pack() {
 		/^[[:space:]]*$/{
 			if (L_EMPTY==0) {
 				if (!L_1) {
-					exitwerr();
+					exitwerr("End-line");
 				} else if (!L_2) {
 					L_2=1;
 					printf(";");
@@ -102,7 +99,7 @@ function srtt_pack() {
 function srtt_unpack() {
 	local FNAME=$1
 
-	cat $FNAME -- | awk -F";" '
+	cat $FNAME -- | dos2unix | awk -F";" '
 		function sec2ftime(secs)
 		{
 			hrs=int(secs/3600);
@@ -132,16 +129,14 @@ function srtt_unpack() {
 function srtt_adjust_time() {
 	local OFFS=$1
 	local GAIN=$2
-	local ZERO=$3
-	local FNAME=$4
+	local FNAME=$3
 
-	cat $FNAME -- | awk -F";" \
+	cat $FNAME -- | dos2unix | awk -F";" \
 	-v OFFS=$OFFS \
-	-v GAIN=$GAIN \
-	-v ZERO=$ZERO '
+	-v GAIN=$GAIN '
 	{
-		T1=GAIN*$2 - OFFS;
-		T2=GAIN*$3 - OFFS;
+		T1=GAIN*$2 + OFFS;
+		T2=GAIN*$3 + OFFS;
 		printf("%d;%f;%f;%s;%s;\n",$1,T1,T2,$4,$5);
 	}
 	'
@@ -150,13 +145,20 @@ function srtt_adjust_time() {
 function srtt() {
 	local FNAME=$1
 
-	#srtt_pack $FNAME
-	#srtt_adjust_time $SRTT_OFFS $SRTT_GAIN $SRTT_ZERO $FNAME
-	#srtt_unpack $FNAME
+	if [ $SRTT_DEBUG == "yes" ]; then
+		echo "Intermediate files produced:" \
+			"${SRTT_TMP_NAME}_[0-3] ..." 1>&2
 
-	srtt_pack $FNAME | \
-		srtt_adjust_time $SRTT_OFFS $SRTT_GAIN $SRTT_ZERO | \
-		srtt_unpack
+		cat $FNAME -- | dos2unix > ${SRTT_TMP_NAME}_0
+		srtt_pack ${SRTT_TMP_NAME}_0 > ${SRTT_TMP_NAME}_1
+		srtt_adjust_time $SRTT_OFFS $SRTT_GAIN ${SRTT_TMP_NAME}_1 > \
+			${SRTT_TMP_NAME}_2
+		srtt_unpack ${SRTT_TMP_NAME}_2 | tee ${SRTT_TMP_NAME}_3
+	else
+		srtt_pack $FNAME | \
+			srtt_adjust_time $SRTT_OFFS $SRTT_GAIN | \
+			srtt_unpack
+	fi
 }
 
 
@@ -166,6 +168,7 @@ if [ "$SRTT_SH" == $( ebasename $0 ) ]; then
 
 	SRTT_SH_INFO=${SRTT_SH}
 	source .dvd.ui..srtt.sh
+	set -o pipefail
 
 	srtt "$@"
 
