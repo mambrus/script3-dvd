@@ -119,16 +119,16 @@ function srtt_unpack() {
 }
 
 function srtt_adjust_time() {
-	local OFFS=$1
-	local GAIN=$2
+	local M=$1
+	local K=$2
 	local FNAME=$3
 
 	cat $FNAME -- | dos2unix | awk -F";" \
-	-v OFFS=$OFFS \
-	-v GAIN=$GAIN '
+	-v M=$M \
+	-v K=$K '
 	{
-		T1=GAIN*$2 + OFFS;
-		T2=GAIN*$3 + OFFS;
+		T1=K*$2 + M;
+		T2=K*$3 + M;
 		printf("%d;%f;%f;%s;%s;\n",$1,T1,T2,$4,$5);
 	}
 	'
@@ -143,12 +143,12 @@ function srtt() {
 
 		cat $FNAME -- | dos2unix > ${SRTT_TMP_NAME}_0
 		srtt_pack ${SRTT_TMP_NAME}_0 > ${SRTT_TMP_NAME}_1
-		srtt_adjust_time $SRTT_OFFS $SRTT_GAIN ${SRTT_TMP_NAME}_1 > \
+		srtt_adjust_time $SRTT_M $SRTT_K ${SRTT_TMP_NAME}_1 > \
 			${SRTT_TMP_NAME}_2
 		srtt_unpack ${SRTT_TMP_NAME}_2 | tee ${SRTT_TMP_NAME}_3
 	else
 		srtt_pack $FNAME | \
-			srtt_adjust_time $SRTT_OFFS $SRTT_GAIN | \
+			srtt_adjust_time $SRTT_M $SRTT_K | \
 			srtt_unpack
 	fi
 }

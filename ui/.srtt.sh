@@ -2,8 +2,8 @@
 # This is not even a script, stupid and can't exist alone. It is purely
 # meant for being included.
 
-DEF_OFFS="0.0"
-DEF_GAIN="1.0"
+DEF_M="0.0"
+DEF_K="1.0"
 DEF_INV="yes"
 DEF_TMP_NAME="/tmp/${SRTT_SH_INFO}_inter"
 
@@ -86,8 +86,8 @@ OPTIONS
 
     Raw operation options
         -m seconds  Offset to add in seconds. If to subtract, seconds should
-                    be a negative value. Default offset is $DEF_OFFS.
-        -k gain     Gain to apply (or slew). Default gain is $DEF_GAIN.
+                    be a negative value. Default offset is $DEF_M.
+        -k gain     Gain to apply (or slew). Default gain is $DEF_K.
 
     Debugging and verbosity options
         -d          Output additional debugging info.
@@ -120,7 +120,7 @@ EOF
 				exit 3
 			fi
 			SRTT_OPMODE="raw"
-			SRTT_OFFS_0="${OPTARG}"
+			SRTT_M_0="${OPTARG}"
 			;;
 		k)
 			if [ "X${SRTT_OPMODE}" == "Xassisted" ]; then
@@ -129,7 +129,7 @@ EOF
 				exit 3
 			fi
 			SRTT_OPMODE="raw"
-			SRTT_GAIN_0="${OPTARG}"
+			SRTT_K_0="${OPTARG}"
 			;;
 		[x,y,X,Y])
 			if [ "X${SRTT_OPMODE}" == "Xraw" ]; then
@@ -197,25 +197,25 @@ EOF
 		X2=$(srtt_ftime2sec ${FX2})
 		Y2=$(srtt_ftime2sec ${FY2})
 
-		SRTT_OFFS_0=$(awk "BEGIN{print ($Y2* $X1-$Y1* $X2)/($X1- $X2)}" )
-		SRTT_GAIN_0=$(awk "BEGIN{print ($Y1- $SRTT_OFFS_0)/ $X1}" )
+		SRTT_M_0=$(awk "BEGIN{print ($Y2* $X1-$Y1* $X2)/($X1- $X2)}" )
+		SRTT_K_0=$(awk "BEGIN{print ($Y1- $SRTT_M_0)/ $X1}" )
 
 	fi
 
 #Actuating defaults if needed
 	SRTT_INV=${SRTT_INV-$DEF_INV}
-	SRTT_OFFS_0=${SRTT_OFFS_0-$DEF_OFFS}
-	SRTT_GAIN_0=${SRTT_GAIN_0-$DEF_GAIN}
+	SRTT_M_0=${SRTT_M_0-$DEF_M}
+	SRTT_K_0=${SRTT_K_0-$DEF_K}
 	SRTT_DEBUG=${SRTT_DEBUG-"no"}
 	SRTT_TMP_NAME=${SRTT_TMP_NAME-$DEF_TMP_NAME}
 	SRTT_OPMODE=${SRTT_OPMODE-"raw"}
 
 	if [ $SRTT_INV == "yes" ]; then
-		SRTT_OFFS=$(echo ${SRTT_OFFS_0} | awk '{print -1.0*$1}')
-		SRTT_GAIN=$(echo ${SRTT_GAIN_0} | awk '{print  1.0/$1}')
+		SRTT_M=$(awk "BEGIN{print (-1.0*$SRTT_M_0)/$SRTT_K_0}")
+		SRTT_K=$(awk "BEGIN{print  1.0/$SRTT_K_0}")
 	else
-		SRTT_OFFS=${SRTT_OFFS_0}
-		SRTT_GAIN=${SRTT_GAIN_0}
+		SRTT_M=${SRTT_M_0}
+		SRTT_K=${SRTT_K_0}
 	fi
 
 	if [ $SRTT_DEBUG == "yes" ]; then
@@ -233,10 +233,10 @@ EOF
 		echo "  X2=$X2"
 		echo "  Y2=$Y2"
 		echo "  SRTT_INV=$SRTT_INV"
-		echo "  SRTT_OFFS_0=$SRTT_OFFS_0"
-		echo "  SRTT_GAIN_0=$SRTT_GAIN_0"
-		echo "  SRTT_OFFS=$SRTT_OFFS"
-		echo "  SRTT_GAIN=$SRTT_GAIN"
+		echo "  SRTT_M_0=$SRTT_M_0"
+		echo "  SRTT_K_0=$SRTT_K_0"
+		echo "  SRTT_M=$SRTT_M"
+		echo "  SRTT_K=$SRTT_K"
 		echo
 		exec 1>&3 3>&-
 	fi
