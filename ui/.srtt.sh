@@ -7,6 +7,21 @@ DEF_GAIN="1.0"
 DEF_INV="yes"
 DEF_TMP_NAME="/tmp/${SRTT_SH_INFO}_inter"
 
+function srtt_ftime2sec() {
+	local FTIME=$1
+
+	echo $FTIME | awk '
+		function ftime2sec(ftime)
+		{
+			patsplit(ftime,a,/[:,]/,r);
+			return 3600*r[0] + 60*r[1] + strtonum(r[2]"."r[3]);
+		}
+		{
+			print ftime2sec($1)
+		}
+		'
+}
+
 function print_srtt_help() {
 			cat <<EOF
 NAME
@@ -38,10 +53,25 @@ DESCRIPTION
            [1] is the first  calibration point for {x,y}
            [2] is the second calibration point for {x,y}
 
-        k,m can then be passed using the corresponding options below.
-        Alternatively $SRTT_SH_INFO can calculate {k,m} for you, provided
-        the calibration points {{x,y}[1], {x,y}[2]} are given instead. See
-        "Assisted operation options" below.
+        Formulae with constants inserted describe how the error is
+        generated. We actually need the inverse, but $SRTT_SH_INFO will
+        calculate that for you.
+
+        k,m can now be passed using the corresponding options below.
+
+    Assisted operation
+		$SRTT_SH_INFO can calculate {k,m} automatically provided two
+		calibration points {{x,y}[1], {x,y}[2]} are given. Note that this
+		operation is mutually exlusive from the raw (y = kx +m) operation.
+		If one point is given, all must be given.
+
+        All {x,y}[1,2] are times and are expressed as formatted time
+        (ftime) following a non-locale format as follows:
+
+        HH:MM:SS(,milli)
+
+		See "Assisted operation options" under OPTIONS for how to set
+		{x,y}[1,2].
 
 EXAMPLES
         $SRTT_SH_INFO -m12.34 myfile.srt
@@ -49,7 +79,10 @@ EXAMPLES
 OPTIONS
 
     Assisted operation options
-        TBD
+        -x ftime    x[1]: Speach time for the first calibration point
+        -y ftime    y[1]: Text time for the first calibration point
+        -X ftime    x[2]: Speach time for the second calibration point
+        -Y ftime    y[2]: Text time for the second calibration point
 
     Raw operation options
         -m seconds  Offset to add in seconds. If to subtract, seconds should
@@ -66,11 +99,11 @@ OPTIONS
                     tracing transformation errors.
 
 AUTHOR
-        Written by Michael Ambrus.
+        Written by Michael Ambrus, 29 Dec 2014
 
 EOF
 }
-	while getopts hm:k:dt: OPTION; do
+	while getopts hm:k:dt:x:y:X:Y: OPTION; do
 		case $OPTION in
 		h)
 			if [ -t 1 ]; then
@@ -82,7 +115,7 @@ EOF
 			;;
 		m)
 			if [ "X${SRTT_OPMODE}" == "Xassisted" ]; then
-				echo "Syntax error: Mutually exlusive options used" 1>&2
+				echo "Syntax error: Mutually exclusive options used" 1>&2
 				echo "For help, type: $SRTT_SH_INFO -h" 1>&2
 				exit 3
 			fi
@@ -91,12 +124,34 @@ EOF
 			;;
 		k)
 			if [ "X${SRTT_OPMODE}" == "Xassisted" ]; then
-				echo "Syntax error: Mutually exlusive options used" 1>&2
+				echo "Syntax error: Mutually exclusive options used" 1>&2
 				echo "For help, type: $SRTT_SH_INFO -h" 1>&2
 				exit 3
 			fi
 			SRTT_OPMODE="raw"
 			SRTT_GAIN_0="${OPTARG}"
+			;;
+		[x,y,X,Y])
+			if [ "X${SRTT_OPMODE}" == "Xraw" ]; then
+				echo "Syntax error: Mutually exclusive options used" 1>&2
+				echo "For help, type: $SRTT_SH_INFO -h" 1>&2
+				exit 3
+			fi
+			SRTT_OPMODE="assisted"
+			case $OPTION in
+			x)
+				FX1="${OPTARG}"
+				;;
+			y)
+				FY1="${OPTARG}"
+				;;
+			X)
+				FX2="${OPTARG}"
+				;;
+			Y)
+				FY2="${OPTARG}"
+				;;
+			esac
 			;;
 		d)
 			SRTT_DEBUG="yes"
@@ -123,6 +178,30 @@ EOF
 		exit 2
 	fi
 
+	if [ "X$SRTT_OPMODE" == "Xassisted" ]; then
+		if 	[ "X${FX1}" == "X" ] || \
+			[ "X${FY1}" == "X" ] || \
+			[ "X${FX2}" == "X" ] || \
+			[ "X${FY2}" == "X" ]
+		then
+
+			echo "Syntax error: missing option(s)" 1>&2
+			echo "  $SRTT_SH_INFO requires that if one of x,y,X,Y are given," \
+				"all should be given." 1>&2
+			echo "For help, type: $SRTT_SH_INFO -h" 1>&2
+			exit 4
+		fi
+
+		X1=$(srtt_ftime2sec ${FX1})
+		Y1=$(srtt_ftime2sec ${FY1})
+		X2=$(srtt_ftime2sec ${FX2})
+		Y2=$(srtt_ftime2sec ${FY2})
+
+		SRTT_OFFS_0=$(awk "BEGIN{print ($Y2* $X1-$Y1* $X2)/($X1- $X2)}" )
+		SRTT_GAIN_0=$(awk "BEGIN{print ($Y1- $SRTT_OFFS_0)/ $X1}" )
+
+	fi
+
 #Actuating defaults if needed
 	SRTT_INV=${SRTT_INV-$DEF_INV}
 	SRTT_OFFS_0=${SRTT_OFFS_0-$DEF_OFFS}
@@ -130,7 +209,7 @@ EOF
 	SRTT_DEBUG=${SRTT_DEBUG-"no"}
 	SRTT_TMP_NAME=${SRTT_TMP_NAME-$DEF_TMP_NAME}
 	SRTT_OPMODE=${SRTT_OPMODE-"raw"}
-	
+
 	if [ $SRTT_INV == "yes" ]; then
 		SRTT_OFFS=$(echo ${SRTT_OFFS_0} | awk '{print -1.0*$1}')
 		SRTT_GAIN=$(echo ${SRTT_GAIN_0} | awk '{print  1.0/$1}')
@@ -142,16 +221,23 @@ EOF
 	if [ $SRTT_DEBUG == "yes" ]; then
 		exec 3>&1 1>&2
 		echo "Variables:"
+		echo "  SRTT_OPMODE=$SRTT_OPMODE"
+		echo "  SRTT_DEBUG=$SRTT_DEBUG"
+		echo "  SRTT_TMP_NAME=$SRTT_TMP_NAME"
+		echo "  FX1=$FX1"
+		echo "  FY1=$FY1"
+		echo "  FX2=$FX2"
+		echo "  FY2=$FY2"
+		echo "  X1=$X1"
+		echo "  Y1=$Y1"
+		echo "  X2=$X2"
+		echo "  Y2=$Y2"
 		echo "  SRTT_INV=$SRTT_INV"
 		echo "  SRTT_OFFS_0=$SRTT_OFFS_0"
 		echo "  SRTT_GAIN_0=$SRTT_GAIN_0"
 		echo "  SRTT_OFFS=$SRTT_OFFS"
 		echo "  SRTT_GAIN=$SRTT_GAIN"
-		echo "  SRTT_DEBUG=$SRTT_DEBUG"
-		echo "  SRTT_TMP_NAME=$SRTT_TMP_NAME"
-		echo "  SRTT_OPMODE=$SRTT_OPMODE"
 		echo
 		exec 1>&3 3>&-
 	fi
-
 

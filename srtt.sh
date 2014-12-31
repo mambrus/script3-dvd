@@ -6,14 +6,6 @@ if [ -z $SRTT_SH ]; then
 
 SRTT_SH="srtt.sh"
 
-function srtt_ftime2sec() {
-	local FTIME=$1
-}
-
-function srtt_sec2ftime() {
-	local SEC=$1
-}
-
 function srtt_pack() {
 	local FNAME=$1
 
