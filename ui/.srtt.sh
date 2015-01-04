@@ -6,6 +6,7 @@ DEF_M="0.0"
 DEF_K="1.0"
 DEF_INV="yes"
 DEF_TMP_NAME="/tmp/${SRTT_SH_INFO}_inter"
+DEF_TRELATIVE="original"
 
 function srtt_ftime2sec() {
 	local FTIME=$1
@@ -28,7 +29,7 @@ NAME
         $SRTT_SH_INFO - Adjust time-stamps in Matroska sub-text files
 
 SYNOPSIS
-        $SRTT_SH_INFO [options] filname
+        $SRTT_SH_INFO [options] filename
 
 DESCRIPTION
         $SRTT_SH_INFO parses srt-files. It understands the srt format and
@@ -37,7 +38,7 @@ DESCRIPTION
 
     Calibration
         If y is the time each subtext appearers for the time x for each
-        corresponding spoken line. With two calibration points, preferably
+        corresponding spoken line. With two calibration points: preferably
         spread far from each other, we can calculate k and m as follows:
 
              y[2]*x[1] - y[1]*x[2]
@@ -57,53 +58,99 @@ DESCRIPTION
         generated. We actually need the inverse, but $SRTT_SH_INFO will
         calculate that for you.
 
-        k,m can now be passed using the corresponding options below.
+        k,m can now be passed using the corresponding options. See "Raw
+        operation options" below.
 
     Assisted operation
-		$SRTT_SH_INFO can calculate {k,m} automatically provided two
-		calibration points {{x,y}[1], {x,y}[2]} are given. Note that this
-		operation is mutually exlusive from the raw (y = kx +m) operation.
-		If one point is given, all must be given.
+        $SRTT_SH_INFO can calculate {k,m} automatically provided two
+        calibration points {{x,y}[1], {x,y}[2]} are given. Note that this
+        operation is mutually exclusive from the raw (y = kx +m) operation.
+        If one point is given, all must be given.
 
         All {x,y}[1,2] are times and are expressed as formatted time
         (ftime) following a non-locale format as follows:
 
         HH:MM:SS(,milli)
 
-		See "Assisted operation options" under OPTIONS for how to set
-		{x,y}[1,2].
+        See "Assisted operation options" under OPTIONS for how to set
+        {x,y}[1,2].
 
 EXAMPLES
         $SRTT_SH_INFO -m12.34 myfile.srt
 
 OPTIONS
 
+    General options
+        -I          Time adjustments are incremental. I.e.
+                    adjustment/calibration options apply relative last
+                    output and not relative original time-stamps. Default:
+                    $DEF_TRELATIVE
+
     Assisted operation options
-        -x ftime    x[1]: Speach time for the first calibration point
+        -x ftime    x[1]: Speech time for the first calibration point
         -y ftime    y[1]: Text time for the first calibration point
-        -X ftime    x[2]: Speach time for the second calibration point
+        -X ftime    x[2]: Speech time for the second calibration point
         -Y ftime    y[2]: Text time for the second calibration point
 
     Raw operation options
         -m seconds  Offset to add in seconds. If to subtract, seconds should
-                    be a negative value. Default offset is $DEF_M.
+                    be a negative value.
+                    Hint: If the text shows up too early, the sign in
+                    seconds should be negative. If the text comes too late,
+                    the sign in seconds should be positive (no sign).
+                    Default offset is $DEF_M.
         -k gain     Gain to apply (or slew). Default gain is $DEF_K.
 
     Debugging and verbosity options
-        -d          Output additional debugging info.
+        -d          Output additional debugging info and additional verbosity
         -T name     Prefix of intermediate files, suffix number is appended
                     depending on order. Default is $DEF_TMP_NAME
 
                     Intermediate files are not used in normal operation.
                     They are produced on demand only and are be used for
                     tracing transformation errors.
+OPERATION
+
+    In file-operation mode, note that UID needs to have write access both to
+    the file being altered and to the directory where it's stored.
+
+    Getting good adjustments is easiest to accomplish if one begins without
+    the -I option, i.e. for (repeated) coarse calibration. Then continue
+    with -I option for final touch-ups.
+
+    Note that the original time-stamps are never lost (provided time-stamps
+    have been manipulated by $SRTT_SH_INFO). If restarting a relative
+    adjustment series is needed: To restore a .srt file, re-run
+    $SRTT_SH_INFO without options.
+
+    Hints:
+
+        Wether to use "Assisted operation" or "Raw operation" depends on
+        your mileage. But in general, check if only offset adjustment is
+        needed first. And:
+
+        * If one determines that only offset adjustment is needed, use "Raw
+          operation", i.e. pass -m without either -k or -{x,y,X,Y}.
+
+          This is a good rule-of-thumb regardless of offset original or
+          offset incremental (see -I flag) is used.  Determining if only a
+          constant offset is needed is done by inspecting offset in the
+          beginning and in the end of a film. Rough estimation is enough. If
+          difference in offsets is small relative the distance between the
+          two measuring points, there is no need for slew compensation.
+
+        * If one determines that slew compensation is also needed, use
+          "Assisted operation", i.e. pass options -{x,y,X,Y}.
+
+          Using "Raw operation" in this case is generaly too hard without
+          the help of a calculator.
 
 AUTHOR
         Written by Michael Ambrus, 29 Dec 2014
 
 EOF
 }
-	while getopts hm:k:dt:x:y:X:Y: OPTION; do
+	while getopts hm:k:dt:x:y:X:Y:I OPTION; do
 		case $OPTION in
 		h)
 			if [ -t 1 ]; then
@@ -130,6 +177,9 @@ EOF
 			fi
 			SRTT_OPMODE="raw"
 			SRTT_K_0="${OPTARG}"
+			;;
+		I)
+			SRTT_TRELATIVE="last"
 			;;
 		[x,y,X,Y])
 			if [ "X${SRTT_OPMODE}" == "Xraw" ]; then
@@ -209,6 +259,7 @@ EOF
 	SRTT_DEBUG=${SRTT_DEBUG-"no"}
 	SRTT_TMP_NAME=${SRTT_TMP_NAME-$DEF_TMP_NAME}
 	SRTT_OPMODE=${SRTT_OPMODE-"raw"}
+	SRTT_TRELATIVE=${SRTT_TRELATIVE-$DEF_TRELATIVE}
 
 	if [ $SRTT_INV == "yes" ]; then
 		SRTT_M=$(awk "BEGIN{print (-1.0*$SRTT_M_0)/$SRTT_K_0}")
@@ -222,6 +273,7 @@ EOF
 		exec 3>&1 1>&2
 		echo "Variables:"
 		echo "  SRTT_OPMODE=$SRTT_OPMODE"
+		echo "  SRTT_TRELATIVE=$SRTT_TRELATIVE"
 		echo "  SRTT_DEBUG=$SRTT_DEBUG"
 		echo "  SRTT_TMP_NAME=$SRTT_TMP_NAME"
 		echo "  FX1=$FX1"

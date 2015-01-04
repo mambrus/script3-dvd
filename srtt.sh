@@ -168,7 +168,27 @@ if [ "$SRTT_SH" == $( ebasename $0 ) ]; then
 	source .dvd.ui..srtt.sh
 	set -o pipefail
 
-	srtt "$@"
+	if ! [ -f "${1}" ]; then
+		echo "No such file: ${1}" 1>&2
+		exit 1
+	fi
+	if ! [ -f "${1}.orig" ]; then
+		if [ $SRTT_DEBUG == "yes" ]; then
+			echo "A backup-copy of the original file (${1}.orig) is missing." 1>&2
+			echo "Creating a backup copy in the same directory..." 1>&2
+		fi
+		cp ${1} ${1}.orig
+		chmod a-w ${1}.orig
+	fi
+
+	if [ $SRTT_TRELATIVE == "original" ]; then
+		FNAME="${1}.orig"
+	else
+		FNAME="${1}"
+	fi
+
+	srtt "${FNAME}" > "${DEF_TMP_NAME}_out" && \
+		mv "${DEF_TMP_NAME}_out" ${1}
 
 	exit $?
 fi
