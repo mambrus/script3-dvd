@@ -9,9 +9,7 @@ SRTT_SH="srtt.sh"
 function srtt_pack() {
 	local FNAME=$1
 
-	cat $FNAME -- | dos2unix | \
-		sed -e 's/\x92//g' -e 's/\x96//g'| \
-		awk '
+	cat $FNAME -- | dos2unix | awk '
 		function ftime2sec(ftime)
 		{
 			patsplit(ftime,a,/[:,]/,r);
@@ -100,9 +98,7 @@ function srtt_pack() {
 function srtt_unpack() {
 	local FNAME=$1
 
-	cat $FNAME -- | dos2unix | \
-		sed -e 's/\x92//g' -e 's/\x96//g'| \
-		awk -F";" '
+	cat $FNAME -- | dos2unix | awk -F";" '
 		function sec2ftime(secs)
 		{
 			hrs=int(secs/3600);
@@ -134,17 +130,15 @@ function srtt_adjust_time() {
 	local K=$2
 	local FNAME=$3
 
-	cat $FNAME -- | dos2unix | \
-		sed -e 's/\x92//g' -e 's/\x96//g'| \
-		awk -F";" \
-		-v M=$M \
-		-v K=$K '
-		{
-			T1=K*$2 + M;
-			T2=K*$3 + M;
-			printf("%d;%f;%f;%s;%s;\n",$1,T1,T2,$4,$5);
-		}
-		'
+	cat $FNAME -- | dos2unix | awk -F";" \
+	-v M=$M \
+	-v K=$K '
+	{
+		T1=K*$2 + M;
+		T2=K*$3 + M;
+		printf("%d;%f;%f;%s;%s;\n",$1,T1,T2,$4,$5);
+	}
+	'
 }
 
 function srtt() {
