@@ -38,6 +38,7 @@ function srtt_pack() {
 
 		BEGIN{
 			resetLogic();
+			L_EMPTY=1;
 		}
 
 		/*-- Subtext-line 1 & 2 --*/
@@ -58,6 +59,9 @@ function srtt_pack() {
 		/^[0-9]+[[:space:]]*$/{
 			if (L_INDEX || L_TIME || L_1 || L_2)
 				exitwerr("Index-line");
+			
+			if (!L_EMPTY)
+				exitwerr("Index-line - Empty line (marker) has not occured");
 
 			L_INDEX=1;
 			L_EMPTY=0;
@@ -78,7 +82,9 @@ function srtt_pack() {
 		/^[[:space:]]*$/{
 			if (L_EMPTY==0) {
 				if (!L_1) {
-					exitwerr("End-line");
+					L_1=1;
+					printf("%s;",$0);
+
 				} else if (!L_2) {
 					L_2=1;
 					printf(";");
