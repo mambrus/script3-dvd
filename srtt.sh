@@ -30,7 +30,8 @@ function srtt_pack() {
 		function exitwerr(phase)
 		{
 			print "Error: Format error detected: " phase
-			print "Offending line: "$0
+			print "In file ['$FNAME'], line number: "NR
+			print "["$0"]"
 			fflush();
 			exit(1);
 		}
