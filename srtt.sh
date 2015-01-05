@@ -173,17 +173,20 @@ if [ "$SRTT_SH" == $( ebasename $0 ) ]; then
 		echo "No such file: ${1}" 1>&2
 		exit 1
 	fi
-	if ! [ -f "${1}.orig" ]; then
+	if ! [ -f ".${1}.orig" ]; then
 		if [ $SRTT_DEBUG == "yes" ]; then
-			echo "A backup-copy of the original file (${1}.orig) is missing." 1>&2
+			echo "A backup-copy of the original file (.${1}.orig) is missing." 1>&2
 			echo "Creating a backup copy in the same directory..." 1>&2
 		fi
-		cp ${1} ${1}.orig
-		chmod a-w ${1}.orig
+		dos2unix "${1}"
+		git add "${1}"
+		git commit "${1}" -m"New original added: ${1}"
+		mv "${1}" ".${1}.orig"; cp ".${1}.orig" "${1}"
+		chmod a-w ".${1}.orig"
 	fi
 
 	if [ $SRTT_TRELATIVE == "original" ]; then
-		FNAME="${1}.orig"
+		FNAME=".${1}.orig"
 	else
 		FNAME="${1}"
 	fi
