@@ -6,6 +6,22 @@ if [ -z $SRTT_SH ]; then
 
 SRTT_SH="srtt.sh"
 
+# use this instead of built-in on any Windows type of file-system
+# to avoid permission errors.
+function _mv() {
+	cp "${1}" "${2}" && \
+	rm -f "${1}"
+}
+
+function _dos2unix() {
+	TDIR="/tmp"
+
+	rm -f "${TDIR}/${1}"
+	_mv "${1}" "${TDIR}/${1}"
+	dos2unix "${TDIR}/${1}"
+	_mv "${TDIR}/${1}" "${1}"
+}
+
 function srtt_pack() {
 	local FNAME=$1
 
@@ -57,7 +73,7 @@ function srtt_pack() {
 		/^[0-9]+[[:space:]]*$/{
 			if (L_INDEX || L_TIME || L_1 || L_2)
 				exitwerr("Index-line");
-			
+
 			if (!L_EMPTY)
 				exitwerr("Index-line - Empty line (marker) has not occured");
 
@@ -178,11 +194,12 @@ if [ "$SRTT_SH" == $( ebasename $0 ) ]; then
 			echo "A backup-copy of the original file (.${1}.orig) is missing." 1>&2
 			echo "Creating a backup copy in the same directory..." 1>&2
 		fi
-		dos2unix "${1}"
+		_dos2unix "${1}"
+
 		git add "${1}"
 		git commit "${1}" -m"New original added: ${1}"
-		mv "${1}" ".${1}.orig"; cp ".${1}.orig" "${1}"
-		chmod a-w ".${1}.orig"
+		_mv "${1}" ".${1}.orig"
+		cp ".${1}.orig" "${1}"
 	fi
 
 	if [ $SRTT_TRELATIVE == "original" ]; then
@@ -192,7 +209,7 @@ if [ "$SRTT_SH" == $( ebasename $0 ) ]; then
 	fi
 
 	srtt "${FNAME}" > "${DEF_TMP_NAME}_out" && \
-		mv "${DEF_TMP_NAME}_out" ${1}
+		_mv "${DEF_TMP_NAME}_out" ${1}
 
 	exit $?
 fi
